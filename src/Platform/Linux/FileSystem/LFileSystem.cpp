@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <string>
 
 namespace Winux::Platform::Linux {
@@ -122,6 +123,64 @@ Core::Result<void> Linux::unset_env(const std::wstring& name)
     {
         return Core::Result<void>::failure(
             "Unable to unset environment variable (error " + std::to_string(errno) + ")");
+    }
+
+    return Core::Result<void>::success();
+}
+
+Core::Result<std::string> Linux::read_file(
+    const std::filesystem::path& file,
+    const std::ios::openmode mode)
+{
+    std::ifstream stream(file, mode | std::ios::in);
+    if (!stream)
+    {
+        return Core::Result<std::string>::failure(
+            "Unable to open file for reading: " + file.string());
+    }
+
+    stream.seekg(0, std::ios::end);
+    const std::streampos size = stream.tellg();
+    if (size < 0)
+    {
+        return Core::Result<std::string>::failure(
+            "Unable to determine file size: " + file.string());
+    }
+
+    std::string contents(static_cast<std::size_t>(size), '\0');
+    stream.seekg(0, std::ios::beg);
+    if (!contents.empty())
+    {
+        stream.read(contents.data(), static_cast<std::streamsize>(contents.size()));
+    }
+
+    if (!stream && !stream.eof())
+    {
+        return Core::Result<std::string>::failure(
+            "Unable to read file: " + file.string());
+    }
+
+    return Core::Result<std::string>::success(std::move(contents));
+}
+
+Core::Result<void> Linux::write_file(
+    const std::filesystem::path& file,
+    const std::string_view contents,
+    const std::ios::openmode mode)
+{
+    std::ofstream stream(file, mode | std::ios::out);
+    if (!stream)
+    {
+        return Core::Result<void>::failure(
+            "Unable to open file for writing: " + file.string());
+    }
+
+    stream.write(contents.data(), static_cast<std::streamsize>(contents.size()));
+    stream.flush();
+    if (!stream)
+    {
+        return Core::Result<void>::failure(
+            "Unable to write file: " + file.string());
     }
 
     return Core::Result<void>::success();

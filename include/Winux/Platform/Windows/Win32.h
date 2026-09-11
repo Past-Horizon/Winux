@@ -21,6 +21,13 @@ public:
         const std::wstring& name,
         const std::wstring& value) override;
     Core::Result<void> unset_env(const std::wstring& name) override;
+    Core::Result<std::string> read_file(
+        const std::filesystem::path& file,
+        std::ios::openmode mode) override;
+    Core::Result<void> write_file(
+        const std::filesystem::path& file,
+        std::string_view contents,
+        std::ios::openmode mode) override;
     Core::Result<std::vector<std::uint32_t>> find_processes(const std::wstring& name) override;
     Core::Result<std::optional<std::uint32_t>> find_process(const std::wstring& name) override;
     Core::Result<std::filesystem::path> find_location(std::uint32_t process_id) override;

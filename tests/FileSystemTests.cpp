@@ -60,4 +60,43 @@ TEST_F(FileSystemTests, EnvironmentVariableRoundTrips)
     EXPECT_TRUE(file_system->get_env(name).failed());
 }
 
+TEST_F(FileSystemTests, WriteAndReadFileSucceeds)
+{
+    const auto temp = file_system->temp();
+    ASSERT_TRUE(temp.succeeded()) << temp.message();
+
+    const std::filesystem::path file = temp.value() / "winux-filesystem-test.txt";
+    std::error_code cleanup_error;
+    std::filesystem::remove(file, cleanup_error);
+
+    const auto written = file_system->write_file(file, "Winux file test");
+    ASSERT_TRUE(written.succeeded()) << written.message();
+
+    const auto read = file_system->read_file(file);
+    ASSERT_TRUE(read.succeeded()) << read.message();
+    EXPECT_EQ(read.value(), "Winux file test");
+
+    std::filesystem::remove(file, cleanup_error);
+}
+
+TEST_F(FileSystemTests, ReadAndWriteFailuresReturnFailure)
+{
+    const auto temp = file_system->temp();
+    ASSERT_TRUE(temp.succeeded()) << temp.message();
+
+    const std::filesystem::path missing_file = temp.value() / "winux-file-does-not-exist.txt";
+    std::error_code cleanup_error;
+    std::filesystem::remove(missing_file, cleanup_error);
+
+    const auto read = file_system->read_file(missing_file);
+    EXPECT_TRUE(read.failed());
+    EXPECT_FALSE(read.message().empty());
+
+    const std::filesystem::path invalid_file =
+        temp.value() / "winux-missing-directory" / "file.txt";
+    const auto written = file_system->write_file(invalid_file, "data");
+    EXPECT_TRUE(written.failed());
+    EXPECT_FALSE(written.message().empty());
+}
+
 }

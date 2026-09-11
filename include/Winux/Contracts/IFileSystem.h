@@ -3,7 +3,9 @@
 #include <Winux/Core/Results.h>
 
 #include <filesystem>
+#include <ios>
 #include <string>
+#include <string_view>
 
 namespace Winux::Contracts {
 
@@ -20,6 +22,13 @@ public:
         const std::wstring& name,
         const std::wstring& value) = 0;
     virtual Core::Result<void> unset_env(const std::wstring& name) = 0;
+    virtual Core::Result<std::string> read_file(
+        const std::filesystem::path& file,
+        std::ios::openmode mode = std::ios::in | std::ios::binary) = 0;
+    virtual Core::Result<void> write_file(
+        const std::filesystem::path& file,
+        std::string_view contents,
+        std::ios::openmode mode = std::ios::out | std::ios::binary | std::ios::trunc) = 0;
 };
 
 }
