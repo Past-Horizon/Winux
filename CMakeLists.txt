@@ -19,6 +19,10 @@ target_include_directories(Winux PUBLIC
 
 target_compile_features(Winux PUBLIC cxx_std_20)
 
+if (WIN32)
+  target_link_libraries(Winux PRIVATE Shell32)
+endif()
+
 if (WINUX_BUILD_TESTS)
   include(FetchContent)
 
@@ -33,6 +37,7 @@ if (WINUX_BUILD_TESTS)
   enable_testing()
   add_executable(WinuxProcessTests
     tests/ProcessTests.cpp
+    tests/FileSystemTests.cpp
   )
 
   target_link_libraries(WinuxProcessTests

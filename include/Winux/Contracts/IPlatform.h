@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Winux/Core/Results.h>
+#include <Winux/Contracts/IFileSystem.h>
 #include <Winux/Contracts/IProcess.h>
 
 namespace Winux::Contracts {
@@ -10,6 +11,7 @@ public:
     virtual ~IPlatform() = default;
 
     virtual IProcess& process() = 0;
+    virtual IFileSystem& file_system() = 0;
     virtual IProcess::ProcessOptions supported_features() const = 0;
 };
 
