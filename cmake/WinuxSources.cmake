@@ -1,25 +1,29 @@
-set(WINUX_SOURCE_ROOT "${CMAKE_CURRENT_LIST_DIR}/..")
-get_filename_component(WINUX_SOURCE_ROOT "${WINUX_SOURCE_ROOT}" ABSOLUTE)
-get_filename_component(WINUX_SOURCE_ROOT "${WINUX_SOURCE_ROOT}" NORMALIZE)
-file(TO_CMAKE_PATH "${WINUX_SOURCE_ROOT}" WINUX_SOURCE_ROOT)
-
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
-  file(GLOB_RECURSE WINUX_SOURCES CONFIGURE_DEPENDS
-    "${WINUX_SOURCE_ROOT}/*.cpp"
-    "${WINUX_SOURCE_ROOT}/*.h"
-  )
-else()
-  file(GLOB_RECURSE WINUX_SOURCES
-    "${WINUX_SOURCE_ROOT}/*.cpp"
-    "${WINUX_SOURCE_ROOT}/*.h"
-  )
-endif()
-
-list(FILTER WINUX_SOURCES EXCLUDE REGEX "[/\\\\]\.git[/\\\\]")
-list(FILTER WINUX_SOURCES EXCLUDE REGEX "[/\\\\]tests[/\\\\]")
+﻿set(WINUX_SOURCES
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Winux.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Contracts/IFileSystem.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Contracts/IMutex.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Contracts/IPlatform.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Contracts/IProcess.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Core/Operations.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Core/Results.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Platform/Platform.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Platform/Linux/Linux.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Platform/Windows/Win32.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Platform/Windows/Process/WProcessUtils.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Utils/Logger.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../include/Winux/Utils/Strings.h"
+  "${CMAKE_CURRENT_LIST_DIR}/../src/Platform/Platform.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../src/Platform/Linux/FileSystem/LFileSystem.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../src/Platform/Linux/Mutex/LMutex.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../src/Platform/Linux/Process/LProcess.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../src/Platform/Windows/FileSystem/WFileSystem.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../src/Platform/Windows/Mutex/WMutex.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../src/Platform/Windows/Process/WProcess.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../src/Platform/Windows/Process/WProcessUtils.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../src/Utils/Logger.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../src/Utils/Strings.cpp"
+)
 
 if (NOT WINUX_SOURCES)
-  message(FATAL_ERROR
-    "No Winux .cpp or .h sources were found under ${WINUX_SOURCE_ROOT}."
-  )
+  message(FATAL_ERROR "No Winux source files were found for the current build.")
 endif()
