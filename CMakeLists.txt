@@ -38,6 +38,7 @@ if (WINUX_BUILD_TESTS)
   add_executable(WinuxProcessTests
     tests/ProcessTests.cpp
     tests/FileSystemTests.cpp
+    tests/MutexTests.cpp
   )
 
   target_link_libraries(WinuxProcessTests

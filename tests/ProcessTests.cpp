@@ -64,6 +64,8 @@ TEST_F(ProcessTests, PlatformCreationProvidesProcessApi)
 TEST_F(ProcessTests, ProcessOptionsMatchPlatformSupport)
 {
     const auto supported = platform->supported_features();
+    EXPECT_TRUE(supported.contains(
+        Winux::Contracts::IProcess::ProcessOption::Detached));
 #ifdef _WIN32
     EXPECT_TRUE(supported.contains(
         Winux::Contracts::IProcess::ProcessOption::CreateNoWindow));
@@ -83,6 +85,24 @@ TEST_F(ProcessTests, CreateProcessReturnsRunningProcess)
     ASSERT_NE(process_id, 0u);
 
     const auto running = process->is_running(process_id);
+    ASSERT_TRUE(running.succeeded()) << running.message();
+    EXPECT_TRUE(running.value());
+}
+
+TEST_F(ProcessTests, DetachedOptionStartsProcess)
+{
+#ifdef _WIN32
+    const auto result = process->create_process(
+        L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"")
+        .detached()
+        .start();
+#else
+    const auto result = process->create_process(L"sleep 30").detached().start();
+#endif
+    ASSERT_TRUE(result.succeeded()) << result.message();
+    created_processes.push_back(result.value());
+
+    const auto running = process->is_running(result.value());
     ASSERT_TRUE(running.succeeded()) << running.message();
     EXPECT_TRUE(running.value());
 }
@@ -189,6 +209,16 @@ TEST_F(ProcessTests, NewConsoleOptionStartsProcess)
     const auto running = process->is_running(result.value());
     ASSERT_TRUE(running.succeeded()) << running.message();
     EXPECT_TRUE(running.value());
+}
+
+TEST_F(ProcessTests, DetachedAndNewConsoleOptionsAreIncompatible)
+{
+    const auto result = process->create_process(
+        L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"")
+        .detached()
+        .new_console()
+        .start();
+    EXPECT_TRUE(result.failed());
 }
 #else
 TEST_F(ProcessTests, UnsupportedWindowsOptionsFailBeforeStarting)

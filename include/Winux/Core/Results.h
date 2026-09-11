@@ -53,9 +53,14 @@ public:
         return status_ == ResultStatus::Failure;
     }
 
-    const Value& value() const
+    const Value& value() const &
     {
         return value_.value();
+    }
+
+    Value&& value() &&
+    {
+        return std::move(value_.value());
     }
 
     const std::string& message() const noexcept

@@ -17,6 +17,7 @@ Contracts::IProcess::ProcessOptions Win32::supported_features() const
     Contracts::IProcess::ProcessOptions features;
     features.add(Contracts::IProcess::ProcessOption::CreateNoWindow);
     features.add(Contracts::IProcess::ProcessOption::CreateNewConsole);
+    features.add(Contracts::IProcess::ProcessOption::Detached);
     return features;
 }
 
@@ -146,6 +147,13 @@ Core::Result<std::uint32_t> Win32::create_process_impl(
             "Unable to create process: requested features are unsupported");
     }
 
+    if (requested_features.contains(Contracts::IProcess::ProcessOption::Detached) &&
+        requested_features.contains(Contracts::IProcess::ProcessOption::CreateNewConsole))
+    {
+        return Core::Result<std::uint32_t>::failure(
+            "Unable to create process: detached and new console options are incompatible");
+    }
+
     STARTUPINFOW startup_info{};
     startup_info.cb = sizeof(startup_info);
 
@@ -162,6 +170,9 @@ Core::Result<std::uint32_t> Win32::create_process_impl(
                   : 0) |
                  (requested_features.contains(Contracts::IProcess::ProcessOption::CreateNewConsole)
                      ? CREATE_NEW_CONSOLE
+                     : 0) |
+                 (requested_features.contains(Contracts::IProcess::ProcessOption::Detached)
+                     ? DETACHED_PROCESS
                      : 0),
             nullptr,
             nullptr,

@@ -16,7 +16,8 @@ public:
     {
         None = 0,
         CreateNoWindow = 1u << 0,
-        CreateNewConsole = 1u << 1
+        CreateNewConsole = 1u << 1,
+        Detached = 1u << 2
     };
 
     class ProcessOptions
@@ -67,6 +68,12 @@ public:
         create_process_operation& new_console()
         {
             options().add(ProcessOption::CreateNewConsole);
+            return *this;
+        }
+
+        create_process_operation& detached()
+        {
+            options().add(ProcessOption::Detached);
             return *this;
         }
     };

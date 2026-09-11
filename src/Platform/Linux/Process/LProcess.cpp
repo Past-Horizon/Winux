@@ -6,6 +6,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <filesystem>
+#include <fcntl.h>
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -42,7 +43,9 @@ Contracts::IProcess& Linux::process()
 
 Contracts::IProcess::ProcessOptions Linux::supported_features() const
 {
-    return {};
+    Contracts::IProcess::ProcessOptions features;
+    features.add(Contracts::IProcess::ProcessOption::Detached);
+    return features;
 }
 
 Core::Result<std::vector<std::uint32_t>> Linux::find_processes(const std::wstring& name)
@@ -141,17 +144,46 @@ Core::Result<std::uint32_t> Linux::create_process_impl(
         return Core::Result<std::uint32_t>::failure("Unable to create process: empty application");
     }
 
-    const pid_t process_id = fork();
-
-    if (process_id < 0)
+    int execution_pipe[2]{};
+    if (pipe(execution_pipe) != 0)
     {
         Logger::Log(Logger::Level::Error, "Unable to create process (error ", errno, ")");
         return Core::Result<std::uint32_t>::failure(
             "Unable to create process (error " + std::to_string(errno) + ")");
     }
 
+    const int flags = fcntl(execution_pipe[1], F_GETFD);
+    if (flags == -1 || fcntl(execution_pipe[1], F_SETFD, flags | FD_CLOEXEC) == -1)
+    {
+        const int error = errno;
+        close(execution_pipe[0]);
+        close(execution_pipe[1]);
+        return Core::Result<std::uint32_t>::failure(
+            "Unable to create process (error " + std::to_string(error) + ")");
+    }
+
+    const pid_t process_id = fork();
+
+    if (process_id < 0)
+    {
+        const int error = errno;
+        close(execution_pipe[0]);
+        close(execution_pipe[1]);
+        Logger::Log(Logger::Level::Error, "Unable to create process (error ", error, ")");
+        return Core::Result<std::uint32_t>::failure(
+            "Unable to create process (error " + std::to_string(error) + ")");
+    }
+
     if (process_id == 0)
     {
+        close(execution_pipe[0]);
+
+        if (requested_features.contains(Contracts::IProcess::ProcessOption::Detached) &&
+            setsid() == -1)
+        {
+            _exit(EXIT_FAILURE);
+        }
+
         std::vector<char*> command_arguments;
         command_arguments.reserve(arguments.size() + 1);
         for (std::string& argument : arguments)
@@ -161,7 +193,25 @@ Core::Result<std::uint32_t> Linux::create_process_impl(
         command_arguments.push_back(nullptr);
 
         execvp(command_arguments.front(), command_arguments.data());
+        const int error = errno;
+        (void)write(execution_pipe[1], &error, sizeof(error));
         _exit(EXIT_FAILURE);
+    }
+
+    close(execution_pipe[1]);
+    int execution_error = 0;
+    const ssize_t bytes_read = read(
+        execution_pipe[0],
+        &execution_error,
+        sizeof(execution_error));
+    close(execution_pipe[0]);
+
+    if (bytes_read > 0)
+    {
+        (void)waitpid(process_id, nullptr, 0);
+        Logger::Log(Logger::Level::Error, "Unable to create process (error ", execution_error, ")");
+        return Core::Result<std::uint32_t>::failure(
+            "Unable to create process (error " + std::to_string(execution_error) + ")");
     }
 
     Logger::Log(Logger::Level::Info, "Created process with ID ", process_id);

@@ -10,6 +10,8 @@ public:
 
     Contracts::IProcess& process() override;
     Contracts::IFileSystem& file_system() override;
+    Core::Result<std::unique_ptr<Contracts::IMutex>> create_mutex(
+        const std::wstring& name) override;
     Contracts::IProcess::ProcessOptions supported_features() const override;
     Core::Result<std::filesystem::path> home() override;
     Core::Result<std::filesystem::path> desktop() override;
