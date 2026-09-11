@@ -2,8 +2,6 @@
 
 #include <gtest/gtest.h>
 
-#ifdef _WIN32
-
 #include <memory>
 #include <string>
 
@@ -109,4 +107,3 @@ TEST_F(MutexTests, UnusualNamesRemainSafe)
 
 }
 
-#endif
