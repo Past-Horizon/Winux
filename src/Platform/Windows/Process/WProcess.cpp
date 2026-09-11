@@ -109,8 +109,14 @@ Core::Result<bool> Win32::is_running(const std::uint32_t process_id)
     const HANDLE process = Process::OpenProcessHandle(SYNCHRONIZE, process_id);
     if (process == nullptr)
     {
+        const DWORD error = GetLastError();
+        if (error == ERROR_INVALID_PARAMETER || error == ERROR_FILE_NOT_FOUND)
+        {
+            return Core::Result<bool>::success(false);
+        }
+
         return Core::Result<bool>::failure(
-            "Unable to open process (error " + std::to_string(GetLastError()) + ")");
+            "Unable to open process (error " + std::to_string(error) + ")");
     }
 
     const DWORD state = WaitForSingleObject(process, 0);

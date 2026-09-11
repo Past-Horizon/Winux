@@ -14,6 +14,7 @@ endif()
 
 list(FILTER WINUX_SOURCES EXCLUDE REGEX "[/\\\\]out[/\\\\]")
 list(FILTER WINUX_SOURCES EXCLUDE REGEX "[/\\\\]\.git[/\\\\]")
+list(FILTER WINUX_SOURCES EXCLUDE REGEX "[/\\\\]tests[/\\\\]")
 
 if (NOT WINUX_SOURCES)
   message(FATAL_ERROR

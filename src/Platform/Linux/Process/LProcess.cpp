@@ -170,6 +170,11 @@ Core::Result<std::uint32_t> Linux::create_process_impl(
 
 Core::Result<void> Linux::terminate_process(const std::uint32_t process_id)
 {
+    if (process_id == 0)
+    {
+        return Core::Result<void>::failure("Unable to terminate process: invalid process ID");
+    }
+
     if (kill(static_cast<pid_t>(process_id), SIGTERM) != 0)
     {
         Logger::Log(Logger::Level::Error, "Unable to terminate process (error ", errno, ")");
