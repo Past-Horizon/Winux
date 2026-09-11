@@ -17,12 +17,20 @@ protected:
     }
 
 public:
+    /*
+        @summary
+        Executes the stored operation using the configured options.
+    */
     ResultType start()
     {
         return action_(options_);
     }
 
 protected:
+    /*
+        @summary
+        Returns the mutable options bag used by the operation.
+    */
     Options& options() noexcept
     {
         return options_;
