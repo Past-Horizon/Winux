@@ -9,10 +9,15 @@ public:
     ~Linux() override = default;
 
     Contracts::IProcess& process() override;
-    std::vector<std::uint32_t> find_processes(const std::wstring& name) override;
-    std::uint32_t find_process(const std::wstring& name) override;
-    std::uint32_t create_process(const std::wstring& application) override;
-    bool terminate_process(std::uint32_t process_id) override;
+    Contracts::IProcess::ProcessOptions supported_features() const override;
+    Core::Result<std::vector<std::uint32_t>> find_processes(const std::wstring& name) override;
+    Core::Result<std::optional<std::uint32_t>> find_process(const std::wstring& name) override;
+    Core::Result<std::filesystem::path> find_location(std::uint32_t process_id) override;
+    Core::Result<bool> is_running(std::uint32_t process_id) override;
+    Core::Result<std::uint32_t> create_process_impl(
+        const std::wstring& application,
+        Contracts::IProcess::ProcessOptions requested_features) override;
+    Core::Result<void> terminate_process(std::uint32_t process_id) override;
 };
 
 }

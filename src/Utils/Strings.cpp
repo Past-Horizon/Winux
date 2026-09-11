@@ -10,7 +10,13 @@ namespace String
 {
     std::string ToString(const std::wstring& value)
     {
-        return std::string(value.begin(), value.end());
+        std::string result;
+        result.reserve(value.size());
+        for (const wchar_t character : value)
+        {
+            result.push_back(static_cast<char>(character));
+        }
+        return result;
     }
 
 #ifdef _WIN32

@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 namespace Winux::Platform::Linux {
@@ -39,7 +40,12 @@ Contracts::IProcess& Linux::process()
     return *this;
 }
 
-std::vector<std::uint32_t> Linux::find_processes(const std::wstring& name)
+Contracts::IProcess::ProcessOptions Linux::supported_features() const
+{
+    return {};
+}
+
+Core::Result<std::vector<std::uint32_t>> Linux::find_processes(const std::wstring& name)
 {
     const std::string process_name = String::ToString(name);
     std::vector<std::uint32_t> process_ids;
@@ -61,17 +67,69 @@ std::vector<std::uint32_t> Linux::find_processes(const std::wstring& name)
     Logger::Log(
         Logger::Level::Info,
         process_ids.empty() ? "Was unable to find process" : "Found matching processes");
-    return process_ids;
+    return Core::Result<std::vector<std::uint32_t>>::success(std::move(process_ids));
 }
 
-std::uint32_t Linux::find_process(const std::wstring& name)
+Core::Result<std::optional<std::uint32_t>> Linux::find_process(const std::wstring& name)
 {
-    const std::vector<std::uint32_t> process_ids = find_processes(name);
-    return process_ids.empty() ? 0 : process_ids.front();
+    const auto process_ids = find_processes(name);
+    if (process_ids.failed())
+    {
+        return Core::Result<std::optional<std::uint32_t>>::failure(process_ids.message());
+    }
+
+    const auto& ids = process_ids.value();
+    return Core::Result<std::optional<std::uint32_t>>::success(
+        ids.empty() ? std::nullopt : std::optional<std::uint32_t>(ids.front()));
 }
 
-std::uint32_t Linux::create_process(const std::wstring& application)
+Core::Result<std::filesystem::path> Linux::find_location(const std::uint32_t process_id)
 {
+    std::error_code error;
+    const auto location = std::filesystem::read_symlink(
+        std::filesystem::path("/proc") / std::to_string(process_id) / "exe",
+        error);
+
+    if (error)
+    {
+        return Core::Result<std::filesystem::path>::failure(
+            "Unable to find process location (error " + error.message() + ")");
+    }
+
+    return Core::Result<std::filesystem::path>::success(location);
+}
+
+Core::Result<bool> Linux::is_running(const std::uint32_t process_id)
+{
+    if (process_id == 0)
+    {
+        return Core::Result<bool>::failure("Unable to check process: invalid process ID");
+    }
+
+    if (kill(static_cast<pid_t>(process_id), 0) == 0 || errno == EPERM)
+    {
+        return Core::Result<bool>::success(true);
+    }
+
+    if (errno == ESRCH)
+    {
+        return Core::Result<bool>::success(false);
+    }
+
+    return Core::Result<bool>::failure(
+        "Unable to check process (error " + std::to_string(errno) + ")");
+}
+
+Core::Result<std::uint32_t> Linux::create_process_impl(
+    const std::wstring& application,
+    const Contracts::IProcess::ProcessOptions requested_features)
+{
+    if (!supported_features().contains_all(requested_features))
+    {
+        return Core::Result<std::uint32_t>::failure(
+            "Unable to create process: requested features are unsupported");
+    }
+
     std::istringstream command_line(String::ToString(application));
     std::vector<std::string> arguments{
         std::istream_iterator<std::string>{ command_line },
@@ -80,7 +138,7 @@ std::uint32_t Linux::create_process(const std::wstring& application)
     if (arguments.empty())
     {
         Logger::Log(Logger::Level::Error, "Unable to create process: empty application");
-        return 0;
+        return Core::Result<std::uint32_t>::failure("Unable to create process: empty application");
     }
 
     const pid_t process_id = fork();
@@ -88,7 +146,8 @@ std::uint32_t Linux::create_process(const std::wstring& application)
     if (process_id < 0)
     {
         Logger::Log(Logger::Level::Error, "Unable to create process (error ", errno, ")");
-        return 0;
+        return Core::Result<std::uint32_t>::failure(
+            "Unable to create process (error " + std::to_string(errno) + ")");
     }
 
     if (process_id == 0)
@@ -106,18 +165,27 @@ std::uint32_t Linux::create_process(const std::wstring& application)
     }
 
     Logger::Log(Logger::Level::Info, "Created process with ID ", process_id);
-    return static_cast<std::uint32_t>(process_id);
+    return Core::Result<std::uint32_t>::success(static_cast<std::uint32_t>(process_id));
 }
 
-bool Linux::terminate_process(const std::uint32_t process_id)
+Core::Result<void> Linux::terminate_process(const std::uint32_t process_id)
 {
     if (kill(static_cast<pid_t>(process_id), SIGTERM) != 0)
     {
         Logger::Log(Logger::Level::Error, "Unable to terminate process (error ", errno, ")");
-        return false;
+        return Core::Result<void>::failure(
+            "Unable to terminate process (error " + std::to_string(errno) + ")");
     }
 
-    return true;
+    int status = 0;
+    if (waitpid(static_cast<pid_t>(process_id), &status, 0) == -1 && errno != ECHILD)
+    {
+        Logger::Log(Logger::Level::Error, "Unable to wait for process termination (error ", errno, ")");
+        return Core::Result<void>::failure(
+            "Unable to wait for process termination (error " + std::to_string(errno) + ")");
+    }
+
+    return Core::Result<void>::success();
 }
 
 }
