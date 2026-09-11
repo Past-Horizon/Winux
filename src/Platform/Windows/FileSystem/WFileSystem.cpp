@@ -51,9 +51,19 @@ Core::Result<std::filesystem::path> Win32::desktop()
     return KnownFolderPath(FOLDERID_Desktop);
 }
 
-Core::Result<std::filesystem::path> Win32::app_data()
+Core::Result<std::filesystem::path> Win32::app_data_impl(Contracts::AppDataScope scope)
 {
-    return KnownFolderPath(FOLDERID_RoamingAppData);
+    switch (scope)
+    {
+    case Contracts::AppDataScope::local:
+        return KnownFolderPath(FOLDERID_LocalAppData);
+    case Contracts::AppDataScope::local_low:
+        return KnownFolderPath(FOLDERID_LocalAppDataLow);
+    case Contracts::AppDataScope::roaming:
+        return KnownFolderPath(FOLDERID_RoamingAppData);
+    }
+
+    return Core::Result<std::filesystem::path>::failure("Unknown application data scope");
 }
 
 Core::Result<std::filesystem::path> Win32::temp()

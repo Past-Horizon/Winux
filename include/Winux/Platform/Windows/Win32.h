@@ -53,7 +53,8 @@ public:
         @summary
         Returns the application data directory on Windows.
     */
-    Core::Result<std::filesystem::path> app_data() override;
+    Core::Result<std::filesystem::path> app_data_impl(
+        Contracts::AppDataScope scope) override;
 
     /*
         @summary

@@ -53,19 +53,39 @@ Core::Result<std::filesystem::path> Linux::desktop()
         : Core::Result<std::filesystem::path>::success(home.value() / "Desktop");
 }
 
-Core::Result<std::filesystem::path> Linux::app_data()
+Core::Result<std::filesystem::path> Linux::app_data_impl(Contracts::AppDataScope scope)
 {
-    const auto xdg_data_home = get_env(L"XDG_DATA_HOME");
-    if (xdg_data_home.succeeded() && !xdg_data_home.value().empty())
+    const wchar_t* variable = L"XDG_DATA_HOME";
+    const char* fallback = ".local";
+    const char* fallback_leaf = "share";
+
+    switch (scope)
+    {
+    case Contracts::AppDataScope::local:
+        break;
+    case Contracts::AppDataScope::local_low:
+        variable = L"XDG_CACHE_HOME";
+        fallback_leaf = "cache";
+        break;
+    case Contracts::AppDataScope::roaming:
+        variable = L"XDG_CONFIG_HOME";
+        fallback_leaf = "config";
+        break;
+    default:
+        return Core::Result<std::filesystem::path>::failure("Unknown application data scope");
+    }
+
+    const auto xdg_home = get_env(variable);
+    if (xdg_home.succeeded() && !xdg_home.value().empty())
     {
         return Core::Result<std::filesystem::path>::success(
-            std::filesystem::path(xdg_data_home.value()));
+            std::filesystem::path(xdg_home.value()));
     }
 
     const auto home = HomePath(*this);
     return home.failed()
         ? Core::Result<std::filesystem::path>::failure(home.message())
-        : Core::Result<std::filesystem::path>::success(home.value() / ".local" / "share");
+        : Core::Result<std::filesystem::path>::success(home.value() / fallback / fallback_leaf);
 }
 
 Core::Result<std::filesystem::path> Linux::temp()

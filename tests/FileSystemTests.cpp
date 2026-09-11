@@ -33,7 +33,7 @@ TEST_F(FileSystemTests, KnownFoldersReturnPaths)
     const std::array paths{
         file_system->home(),
         file_system->desktop(),
-        file_system->app_data(),
+        file_system->app_data().start(),
         file_system->temp()};
 
     for (const auto& result : paths)
@@ -41,6 +41,23 @@ TEST_F(FileSystemTests, KnownFoldersReturnPaths)
         ASSERT_TRUE(result.succeeded()) << result.message();
         EXPECT_FALSE(result.value().empty());
     }
+}
+
+TEST_F(FileSystemTests, AppDataScopesAreComposable)
+{
+    const auto local = file_system->app_data().start();
+    const auto explicit_local = file_system->app_data().local().start();
+    const auto local_low = file_system->app_data().local_low().start();
+    const auto roaming = file_system->app_data().roaming().start();
+
+    ASSERT_TRUE(local.succeeded()) << local.message();
+    ASSERT_TRUE(explicit_local.succeeded()) << explicit_local.message();
+    ASSERT_TRUE(local_low.succeeded()) << local_low.message();
+    ASSERT_TRUE(roaming.succeeded()) << roaming.message();
+    EXPECT_EQ(local.value(), explicit_local.value());
+    EXPECT_FALSE((local.value() / "Winux").empty());
+    EXPECT_NE(local.value(), local_low.value());
+    EXPECT_NE(local.value(), roaming.value());
 }
 
 TEST_F(FileSystemTests, EnvironmentVariableRoundTrips)

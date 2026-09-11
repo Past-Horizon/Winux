@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Winux/Core/Operations.h>
 #include <Winux/Core/Results.h>
 
 #include <filesystem>
@@ -9,12 +10,48 @@
 
 namespace Winux::Contracts {
 
+enum class AppDataScope {
+    local,
+    local_low,
+    roaming
+};
+
 /*
     @summary
     Provides access to common file-system and environment locations across platforms.
 */
 class IFileSystem {
 public:
+    using app_data_result = Core::Result<std::filesystem::path>;
+
+    class app_data_operation
+        : public Core::Operation<app_data_result, AppDataScope>
+    {
+    public:
+        app_data_operation(action action)
+            : Operation(std::move(action))
+        {
+        }
+
+        app_data_operation& local()
+        {
+            options() = AppDataScope::local;
+            return *this;
+        }
+
+        app_data_operation& local_low()
+        {
+            options() = AppDataScope::local_low;
+            return *this;
+        }
+
+        app_data_operation& roaming()
+        {
+            options() = AppDataScope::roaming;
+            return *this;
+        }
+    };
+
     virtual ~IFileSystem() = default;
 
     /*
@@ -33,7 +70,14 @@ public:
         @summary
         Returns the application data directory for the current user.
     */
-    virtual Core::Result<std::filesystem::path> app_data() = 0;
+    app_data_operation app_data()
+    {
+        return app_data_operation(
+            [this](AppDataScope scope)
+            {
+                return app_data_impl(scope);
+            });
+    }
 
     /*
         @summary
@@ -104,6 +148,9 @@ public:
         const std::filesystem::path& file,
         std::string_view contents,
         std::ios::openmode mode = std::ios::out | std::ios::binary | std::ios::trunc) = 0;
+
+protected:
+    virtual app_data_result app_data_impl(AppDataScope scope) = 0;
 };
 
 }
