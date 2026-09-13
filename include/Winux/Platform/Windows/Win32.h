@@ -5,7 +5,7 @@
 
 namespace Winux::Platform::Windows {
 
-class Win32 final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem {
+class Win32 final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ITerminal {
 public:
     ~Win32() override = default;
 
@@ -17,9 +17,35 @@ public:
 
     /*
         @summary
+        Returns the environment interface provided by the Windows platform.
+    */
+    Contracts::IEnvironment& environment() override;
+
+    /*
+        @summary
         Returns the file-system interface provided by the Windows platform.
     */
     Contracts::IFileSystem& file_system() override;
+
+    /*
+        @summary
+        Returns the terminal interface provided by the Windows platform.
+    */
+    Contracts::ITerminal& terminal() override;
+
+    /*
+        @summary
+        Executes a command line and captures the produced text output.
+    */
+    Core::Result<std::string> execute_command(const std::wstring& command_line) override;
+
+    /*
+        @summary
+        Creates a reusable command object backed by the terminal.
+    */
+    std::shared_ptr<Contracts::ITerminal::ICommand> create_command(
+        ExecuteHandler execute_handler,
+        CanExecuteHandler can_execute_handler = {}) override;
 
     /*
         @summary
@@ -138,6 +164,9 @@ public:
     */
     Core::Result<std::filesystem::path> find_location(std::uint32_t process_id) override;
 
+    Core::Result<std::filesystem::path> get_executable_directory(
+        std::optional<std::uint32_t> process_id = std::nullopt) override;
+
     /*
         @summary
         Checks whether the given process is still active.
@@ -169,6 +198,15 @@ public:
         Identifier of the process to stop.
     */
     Core::Result<void> terminate_process(std::uint32_t process_id) override;
+
+    /*
+        @summary
+        Immediately terminates the given process by identifier.
+
+        @param process_id
+        Identifier of the process to stop.
+    */
+    Core::Result<void> force_terminate_process(std::uint32_t process_id) override;
 };
 
 }

@@ -145,6 +145,16 @@ public:
 
     /*
         @summary
+        Resolves the directory containing the current or specified process executable.
+
+        @param process_id
+        Optional identifier of the process to inspect. When omitted, uses the current process.
+    */
+    virtual Core::Result<std::filesystem::path> get_executable_directory(
+        std::optional<std::uint32_t> process_id = std::nullopt) = 0;
+
+    /*
+        @summary
         Checks whether a process is still running.
 
         @param process_id
@@ -176,6 +186,15 @@ public:
         Identifier of the process to terminate.
     */
     virtual Core::Result<void> terminate_process(std::uint32_t process_id) = 0;
+
+    /*
+        @summary
+        Immediately terminates a running process without giving it a chance to clean up.
+
+        @param process_id
+        Identifier of the process to terminate.
+    */
+    virtual Core::Result<void> force_terminate_process(std::uint32_t process_id) = 0;
 
 protected:
     /*

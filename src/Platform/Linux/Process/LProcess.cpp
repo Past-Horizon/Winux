@@ -102,6 +102,23 @@ Core::Result<std::filesystem::path> Linux::find_location(const std::uint32_t pro
     return Core::Result<std::filesystem::path>::success(location);
 }
 
+Core::Result<std::filesystem::path> Linux::get_executable_directory(
+    const std::optional<std::uint32_t> process_id)
+{
+    const std::filesystem::path executable = std::filesystem::path("/proc") /
+        (process_id.has_value() ? std::to_string(process_id.value()) : "self") /
+        "exe";
+    std::error_code error;
+    const auto location = std::filesystem::read_symlink(executable, error);
+    if (error)
+    {
+        return Core::Result<std::filesystem::path>::failure(
+            "Unable to find executable directory (error " + error.message() + ")");
+    }
+
+    return Core::Result<std::filesystem::path>::success(location.parent_path());
+}
+
 Core::Result<bool> Linux::is_running(const std::uint32_t process_id)
 {
     if (process_id == 0)
@@ -238,6 +255,31 @@ Core::Result<void> Linux::terminate_process(const std::uint32_t process_id)
         Logger::Log(Logger::Level::Error, "Unable to wait for process termination (error ", errno, ")");
         return Core::Result<void>::failure(
             "Unable to wait for process termination (error " + std::to_string(errno) + ")");
+    }
+
+    return Core::Result<void>::success();
+}
+
+Core::Result<void> Linux::force_terminate_process(const std::uint32_t process_id)
+{
+    if (process_id == 0)
+    {
+        return Core::Result<void>::failure("Unable to force terminate process: invalid process ID");
+    }
+
+    if (kill(static_cast<pid_t>(process_id), SIGKILL) != 0)
+    {
+        Logger::Log(Logger::Level::Error, "Unable to force terminate process (error ", errno, ")");
+        return Core::Result<void>::failure(
+            "Unable to force terminate process (error " + std::to_string(errno) + ")");
+    }
+
+    int status = 0;
+    if (waitpid(static_cast<pid_t>(process_id), &status, 0) == -1 && errno != ECHILD)
+    {
+        Logger::Log(Logger::Level::Error, "Unable to wait for force terminated process (error ", errno, ")");
+        return Core::Result<void>::failure(
+            "Unable to wait for force terminated process (error " + std::to_string(errno) + ")");
     }
 
     return Core::Result<void>::success();

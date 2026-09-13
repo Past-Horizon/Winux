@@ -6,7 +6,108 @@
 #include <windows.h>
 #include <TlHelp32.h>
 
+#include <algorithm>
+
 namespace Winux::Platform::Windows {
+
+namespace {
+
+struct WindowCloseContext
+{
+    DWORD process_id;
+    bool found_window = false;
+};
+
+BOOL CALLBACK CloseProcessWindow(HWND window, LPARAM parameter)
+{
+    auto& context = *reinterpret_cast<WindowCloseContext*>(parameter);
+    DWORD window_process_id = 0;
+    GetWindowThreadProcessId(window, &window_process_id);
+    if (window_process_id == context.process_id && IsWindowVisible(window))
+    {
+        context.found_window = true;
+        PostMessageW(window, WM_CLOSE, 0, 0);
+    }
+
+    return TRUE;
+}
+
+struct ProcessTreeEntry
+{
+    DWORD process_id;
+    DWORD parent_process_id;
+};
+
+std::vector<ProcessTreeEntry> GetProcessTree()
+{
+    std::vector<ProcessTreeEntry> processes;
+    const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE)
+    {
+        return processes;
+    }
+
+    PROCESSENTRY32W entry{};
+    entry.dwSize = sizeof(entry);
+    if (Process32FirstW(snapshot, &entry))
+    {
+        do
+        {
+            processes.push_back({ entry.th32ProcessID, entry.th32ParentProcessID });
+        } while (Process32NextW(snapshot, &entry));
+    }
+
+    CloseHandle(snapshot);
+    return processes;
+}
+
+bool IsDescendant(
+    const std::vector<ProcessTreeEntry>& processes,
+    const DWORD process_id,
+    const DWORD possible_descendant)
+{
+    DWORD parent_process_id = possible_descendant;
+    while (parent_process_id != 0 && parent_process_id != process_id)
+    {
+        const auto parent = std::find_if(
+            processes.begin(),
+            processes.end(),
+            [parent_process_id](const ProcessTreeEntry entry)
+            {
+                return entry.process_id == parent_process_id;
+            });
+        if (parent == processes.end())
+        {
+            return false;
+        }
+
+        parent_process_id = parent->parent_process_id;
+    }
+
+    return parent_process_id == process_id;
+}
+
+bool ForceTerminateProcess(const DWORD process_id)
+{
+    const HANDLE process = Process::OpenProcessHandle(
+        PROCESS_TERMINATE | SYNCHRONIZE,
+        process_id);
+    if (process == nullptr)
+    {
+        return false;
+    }
+
+    const bool terminated = TerminateProcess(process, 1) != FALSE;
+    if (terminated)
+    {
+        WaitForSingleObject(process, INFINITE);
+    }
+
+    CloseHandle(process);
+    return terminated;
+}
+
+}
 
 Contracts::IProcess& Win32::process() {
 	return *this;
@@ -105,6 +206,55 @@ Core::Result<std::filesystem::path> Win32::find_location(const std::uint32_t pro
     return Core::Result<std::filesystem::path>::success(std::filesystem::path(location));
 }
 
+Core::Result<std::filesystem::path> Win32::get_executable_directory(
+    const std::optional<std::uint32_t> process_id)
+{
+    std::wstring location(32768, L'\0');
+    DWORD location_size = static_cast<DWORD>(location.size());
+    HANDLE process = nullptr;
+    if (process_id.has_value())
+    {
+        process = Process::OpenProcessHandle(
+            PROCESS_QUERY_LIMITED_INFORMATION,
+            process_id.value());
+        if (process == nullptr)
+        {
+            return Core::Result<std::filesystem::path>::failure(
+                "Unable to open process (error " + std::to_string(GetLastError()) + ")");
+        }
+    }
+
+    BOOL found = FALSE;
+    if (process_id.has_value())
+    {
+        found = QueryFullProcessImageNameW(process, 0, location.data(), &location_size);
+    }
+    else
+    {
+        const DWORD module_name_length = GetModuleFileNameW(
+            nullptr,
+            location.data(),
+            location_size);
+        found = module_name_length != 0;
+        location_size = module_name_length;
+    }
+    const DWORD error = found ? ERROR_SUCCESS : GetLastError();
+    if (process != nullptr)
+    {
+        CloseHandle(process);
+    }
+
+    if (!found)
+    {
+        return Core::Result<std::filesystem::path>::failure(
+            "Unable to find executable directory (error " + std::to_string(error) + ")");
+    }
+
+    location.resize(location_size);
+    return Core::Result<std::filesystem::path>::success(
+        std::filesystem::path(location).parent_path());
+}
+
 Core::Result<bool> Win32::is_running(const std::uint32_t process_id)
 {
     const HANDLE process = Process::OpenProcessHandle(SYNCHRONIZE, process_id);
@@ -195,7 +345,7 @@ Core::Result<std::uint32_t> Win32::create_process_impl(
 Core::Result<void> Win32::terminate_process(const std::uint32_t process_id)
 {
     const HANDLE process = Process::OpenProcessHandle(
-        PROCESS_TERMINATE | SYNCHRONIZE,
+        SYNCHRONIZE,
         process_id);
     if (process == nullptr)
     {
@@ -204,12 +354,13 @@ Core::Result<void> Win32::terminate_process(const std::uint32_t process_id)
             "Unable to open process (error " + std::to_string(GetLastError()) + ")");
     }
 
-    if (TerminateProcess(process, 1) == FALSE)
+    WindowCloseContext context{ process_id };
+    EnumWindows(CloseProcessWindow, reinterpret_cast<LPARAM>(&context));
+    if (!context.found_window)
     {
-        Logger::Log(Logger::Level::Error, "Unable to terminate process (error ", GetLastError(), ")");
         CloseHandle(process);
         return Core::Result<void>::failure(
-            "Unable to terminate process (error " + std::to_string(GetLastError()) + ")");
+            "Unable to request graceful process termination: process has no visible windows");
     }
 
     if (WaitForSingleObject(process, INFINITE) != WAIT_OBJECT_0)
@@ -221,6 +372,35 @@ Core::Result<void> Win32::terminate_process(const std::uint32_t process_id)
     }
 
     CloseHandle(process);
+    return Core::Result<void>::success();
+}
+
+Core::Result<void> Win32::force_terminate_process(const std::uint32_t process_id)
+{
+    if (process_id == 0)
+    {
+        return Core::Result<void>::failure(
+            "Unable to force terminate process: invalid process ID");
+    }
+
+    const auto processes = GetProcessTree();
+    for (const auto& process : processes)
+    {
+        if (process.process_id != process_id &&
+            IsDescendant(processes, process_id, process.process_id))
+        {
+            ForceTerminateProcess(process.process_id);
+        }
+    }
+
+    if (!ForceTerminateProcess(process_id))
+    {
+        const DWORD error = GetLastError();
+        Logger::Log(Logger::Level::Error, "Unable to force terminate process (error ", error, ")");
+        return Core::Result<void>::failure(
+            "Unable to force terminate process (error " + std::to_string(error) + ")");
+    }
+
     return Core::Result<void>::success();
 }
 

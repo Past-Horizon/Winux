@@ -124,6 +124,23 @@ TEST_F(ProcessTests, FindLocationRejectsInvalidProcess)
     EXPECT_TRUE(location.failed());
 }
 
+TEST_F(ProcessTests, GetExecutableDirectoryReturnsCurrentDirectory)
+{
+    const auto directory = process->get_executable_directory();
+    ASSERT_TRUE(directory.succeeded()) << directory.message();
+    EXPECT_TRUE(std::filesystem::is_directory(directory.value()));
+}
+
+TEST_F(ProcessTests, GetExecutableDirectoryReturnsProcessDirectory)
+{
+    const std::uint32_t process_id = create_test_process();
+    ASSERT_NE(process_id, 0u);
+
+    const auto directory = process->get_executable_directory(process_id);
+    ASSERT_TRUE(directory.succeeded()) << directory.message();
+    EXPECT_TRUE(std::filesystem::is_directory(directory.value()));
+}
+
 TEST_F(ProcessTests, FindProcessFindsCreatedProcess)
 {
     const std::uint32_t process_id = create_test_process();
@@ -168,7 +185,7 @@ TEST_F(ProcessTests, IsRunningChangesAfterTermination)
     ASSERT_TRUE(before.succeeded()) << before.message();
     ASSERT_TRUE(before.value());
 
-    const auto terminated = process->terminate_process(process_id);
+    const auto terminated = process->force_terminate_process(process_id);
     ASSERT_TRUE(terminated.succeeded()) << terminated.message();
 
     const auto after = process->is_running(process_id);
@@ -179,6 +196,12 @@ TEST_F(ProcessTests, IsRunningChangesAfterTermination)
 TEST_F(ProcessTests, TerminateRejectsInvalidProcess)
 {
     const auto terminated = process->terminate_process(0);
+    EXPECT_TRUE(terminated.failed());
+}
+
+TEST_F(ProcessTests, ForceTerminateRejectsInvalidProcess)
+{
+    const auto terminated = process->force_terminate_process(0);
     EXPECT_TRUE(terminated.failed());
 }
 

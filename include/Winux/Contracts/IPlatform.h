@@ -1,9 +1,11 @@
 #pragma once
 
 #include <Winux/Core/Results.h>
+#include <Winux/Contracts/IEnvironment.h>
 #include <Winux/Contracts/IFileSystem.h>
 #include <Winux/Contracts/IMutex.h>
 #include <Winux/Contracts/IProcess.h>
+#include <Winux/Contracts/ITerminal.h>
 
 #include <memory>
 #include <string>
@@ -12,7 +14,7 @@ namespace Winux::Contracts {
 
 /*
     @summary
-    Exposes the platform-specific process, file-system, and mutex services.
+    Exposes the platform-specific process, environment, file-system, and mutex services.
 */
 class IPlatform {
 public:
@@ -26,9 +28,21 @@ public:
 
     /*
         @summary
+        Returns the environment abstraction provided by the current platform.
+    */
+    virtual IEnvironment& environment() = 0;
+
+    /*
+        @summary
         Returns the file-system abstraction provided by the current platform.
     */
     virtual IFileSystem& file_system() = 0;
+
+    /*
+        @summary
+        Returns the terminal abstraction provided by the current platform.
+    */
+    virtual ITerminal& terminal() = 0;
 
     /*
         @summary

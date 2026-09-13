@@ -17,10 +17,12 @@ protected:
         platform = Winux::Platform::create();
         ASSERT_NE(platform, nullptr);
         file_system = &platform->file_system();
+        environment = &platform->environment();
     }
 
     std::unique_ptr<Winux::Contracts::IPlatform> platform;
     Winux::Contracts::IFileSystem* file_system = nullptr;
+    Winux::Contracts::IEnvironment* environment = nullptr;
 };
 
 TEST_F(FileSystemTests, PlatformCreationProvidesFileSystemApi)
@@ -63,18 +65,19 @@ TEST_F(FileSystemTests, AppDataScopesAreComposable)
 TEST_F(FileSystemTests, EnvironmentVariableRoundTrips)
 {
     constexpr auto name = L"WINUX_TEST_ENVIRONMENT_VARIABLE";
-    ASSERT_TRUE(file_system->unset_env(name).succeeded());
+    ASSERT_NE(environment, nullptr);
+    ASSERT_TRUE(environment->unset_env(name).succeeded());
 
-    const auto missing = file_system->get_env(name);
+    const auto missing = environment->get_env(name);
     EXPECT_TRUE(missing.failed());
 
-    ASSERT_TRUE(file_system->set_env(name, L"winux-value").succeeded());
-    const auto value = file_system->get_env(name);
+    ASSERT_TRUE(environment->set_env(name, L"winux-value").succeeded());
+    const auto value = environment->get_env(name);
     ASSERT_TRUE(value.succeeded()) << value.message();
     EXPECT_EQ(value.value(), L"winux-value");
 
-    ASSERT_TRUE(file_system->unset_env(name).succeeded());
-    EXPECT_TRUE(file_system->get_env(name).failed());
+    ASSERT_TRUE(environment->unset_env(name).succeeded());
+    EXPECT_TRUE(environment->get_env(name).failed());
 }
 
 TEST_F(FileSystemTests, WriteAndReadFileSucceeds)
