@@ -36,6 +36,18 @@ TEST_F(TerminalTests, ExecuteCommandRejectsEmptyCommandLine)
     EXPECT_FALSE(result.message().empty());
 }
 
+TEST_F(TerminalTests, ExecuteCommandCapturesOutput)
+{
+#ifdef _WIN32
+    const auto result = terminal->execute_command(L"cmd.exe /c echo Winux");
+#else
+    const auto result = terminal->execute_command(L"printf Winux");
+#endif
+
+    ASSERT_TRUE(result.succeeded()) << result.message();
+    EXPECT_NE(result.value().find("Winux"), std::string::npos);
+}
+
 TEST_F(TerminalTests, CreateCommandExecutesAndNotifiesSubscribers)
 {
     bool execute_called = false;

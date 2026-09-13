@@ -5,8 +5,6 @@
             "name": "windows-base",
             "hidden": true,
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/out/build/${presetName}",
-            "installDir": "${sourceDir}/out/install/${presetName}",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "cl.exe",
                 "CMAKE_CXX_COMPILER": "cl.exe",
@@ -22,6 +20,8 @@
             "name": "x64-debug",
             "displayName": "x64 Debug",
             "inherits": "windows-base",
+            "binaryDir": "${sourceDir}/WinuxBuild/Windows/Debug",
+            "installDir": "${sourceDir}/WinuxBuild/Windows/Debug/install",
             "architecture": {
                 "value": "x64",
                 "strategy": "external"
@@ -35,6 +35,8 @@
             "name": "x64-release",
             "displayName": "x64 Release",
             "inherits": "x64-debug",
+            "binaryDir": "${sourceDir}/WinuxBuild/Windows/Release",
+            "installDir": "${sourceDir}/WinuxBuild/Windows/Release/install",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
@@ -44,6 +46,8 @@
             "name": "x86-debug",
             "displayName": "x86 Debug",
             "inherits": "windows-base",
+            "binaryDir": "${sourceDir}/WinuxBuild/Windows/x86/Debug",
+            "installDir": "${sourceDir}/WinuxBuild/Windows/x86/Debug/install",
             "architecture": {
                 "value": "x86",
                 "strategy": "external"
@@ -57,6 +61,8 @@
             "name": "x86-release",
             "displayName": "x86 Release",
             "inherits": "x86-debug",
+            "binaryDir": "${sourceDir}/WinuxBuild/Windows/x86/Release",
+            "installDir": "${sourceDir}/WinuxBuild/Windows/x86/Release/install",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
@@ -66,8 +72,8 @@
             "name": "linux-debug",
             "displayName": "Linux Debug",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/out/build/${presetName}",
-            "installDir": "${sourceDir}/out/install/${presetName}",
+            "binaryDir": "${sourceDir}/WinuxBuild/Linux/Debug",
+            "installDir": "${sourceDir}/WinuxBuild/Linux/Debug/install",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "WINUX_BUILD_TESTS": "ON"
@@ -87,29 +93,10 @@
             "name": "linux-release",
             "displayName": "Linux Release",
             "inherits": "linux-debug",
+            "binaryDir": "${sourceDir}/WinuxBuild/Linux/Release",
+            "installDir": "${sourceDir}/WinuxBuild/Linux/Release/install",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
-            }
-        },
-        {
-            "name": "macos-debug",
-            "displayName": "macOS Debug",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/out/build/${presetName}",
-            "installDir": "${sourceDir}/out/install/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "WINUX_BUILD_TESTS": "ON"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Darwin"
-            },
-            "vendor": {
-                "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
-                    "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
-                }
             }
         }
     ]

@@ -211,7 +211,11 @@ Core::Result<std::uint32_t> Linux::create_process_impl(
 
         execvp(command_arguments.front(), command_arguments.data());
         const int error = errno;
-        (void)write(execution_pipe[1], &error, sizeof(error));
+        if (write(execution_pipe[1], &error, sizeof(error)) !=
+            static_cast<ssize_t>(sizeof(error)))
+        {
+            _exit(EXIT_FAILURE);
+        }
         _exit(EXIT_FAILURE);
     }
 
