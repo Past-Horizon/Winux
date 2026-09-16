@@ -4,7 +4,7 @@
 
 namespace Winux::Platform::Linux {
 
-class Linux final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ITerminal {
+class Linux final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ITerminal {
 public:
     ~Linux() override = default;
 
@@ -19,6 +19,14 @@ public:
         Returns the environment interface provided by the Linux platform.
     */
     Contracts::IEnvironment& environment() override;
+
+    /*
+        @summary
+        Returns the current user's username on Linux or Android.
+    */
+    Contracts::ISystem& system() override;
+
+    Core::Result<std::wstring> get_username() override;
 
     /*
         @summary

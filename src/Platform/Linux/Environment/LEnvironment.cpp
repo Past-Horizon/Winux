@@ -10,11 +10,6 @@ namespace Winux::Platform::Linux {
 
 namespace {
 
-std::wstring ToWide(const std::string& value)
-{
-    return std::wstring(value.begin(), value.end());
-}
-
 bool InvalidName(const std::wstring& name)
 {
     return name.empty() || name.find(L'=') != std::wstring::npos;
@@ -42,7 +37,7 @@ Core::Result<std::wstring> Linux::get_env(const std::wstring& name)
             "Environment variable is not set: " + narrow_name);
     }
 
-    return Core::Result<std::wstring>::success(ToWide(value));
+    return Core::Result<std::wstring>::success(String::ToWide(value));
 }
 
 Core::Result<void> Linux::set_env(

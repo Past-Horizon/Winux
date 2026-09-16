@@ -39,6 +39,7 @@ if (WINUX_BUILD_TESTS)
     tests/ProcessTests.cpp
     tests/FileSystemTests.cpp
     tests/MutexTests.cpp
+    tests/SystemTests.cpp
     tests/TerminalTests.cpp
   )
 

@@ -5,7 +5,7 @@
 
 namespace Winux::Platform::Windows {
 
-class Win32 final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ITerminal {
+class Win32 final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ITerminal {
 public:
     ~Win32() override = default;
 
@@ -20,6 +20,14 @@ public:
         Returns the environment interface provided by the Windows platform.
     */
     Contracts::IEnvironment& environment() override;
+
+    /*
+        @summary
+        Returns the current user's username on Windows.
+    */
+    Contracts::ISystem& system() override;
+
+    Core::Result<std::wstring> get_username() override;
 
     /*
         @summary

@@ -11,6 +11,11 @@
 namespace String
 {
 
+std::wstring ToWide(const char* value)
+{
+    return value ? std::wstring(value, value + std::char_traits<char>::length(value)) : std::wstring{};
+}
+
 std::string ToString(const std::wstring& value)
 {
     std::string result;

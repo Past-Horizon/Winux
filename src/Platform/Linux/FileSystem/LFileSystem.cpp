@@ -9,11 +9,6 @@ namespace Winux::Platform::Linux {
 
 namespace {
 
-std::wstring ToWide(const std::string& value)
-{
-    return std::wstring(value.begin(), value.end());
-}
-
 Core::Result<std::filesystem::path> HomePath(Linux& platform)
 {
     const auto home = platform.get_env(L"HOME");
