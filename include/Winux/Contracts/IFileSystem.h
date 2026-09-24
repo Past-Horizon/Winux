@@ -117,6 +117,23 @@ public:
         std::string_view contents,
         std::ios::openmode mode = std::ios::out | std::ios::binary | std::ios::trunc) = 0;
 
+    /*
+        @summary
+        Moves a file using the native platform file-system operation.
+
+        @param source
+        Path to the file to move.
+
+        @param destination
+        Path where the file should be moved.
+
+        @note
+        Cross-filesystem moves are not emulated with copy and delete.
+    */
+    virtual Core::Result<void> move_file(
+        const std::filesystem::path& source,
+        const std::filesystem::path& destination) = 0;
+
 protected:
     virtual app_data_result app_data_impl(AppDataScope scope) = 0;
 };

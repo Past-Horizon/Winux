@@ -145,6 +145,10 @@ public:
         std::string_view contents,
         std::ios::openmode mode) override;
 
+    Core::Result<void> move_file(
+        const std::filesystem::path& source,
+        const std::filesystem::path& destination) override;
+
     /*
         @summary
         Lists the process IDs for all matching running processes.

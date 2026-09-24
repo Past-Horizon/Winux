@@ -1,6 +1,7 @@
 #include <Winux/Platform/Linux/Linux.h>
 
 #include <cerrno>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -138,6 +139,22 @@ Core::Result<void> Linux::write_file(
     {
         return Core::Result<void>::failure(
             "Unable to write file: " + file.string());
+    }
+
+    return Core::Result<void>::success();
+}
+
+Core::Result<void> Linux::move_file(
+    const std::filesystem::path& source,
+    const std::filesystem::path& destination)
+{
+    if (std::rename(source.c_str(), destination.c_str()) != 0)
+    {
+        const int error = errno;
+        return Core::Result<void>::failure(
+            "Unable to move file from " + source.string() + " to " +
+            destination.string() + " (error " + std::to_string(error) + ": " +
+            std::strerror(error) + ")");
     }
 
     return Core::Result<void>::success();

@@ -26,7 +26,7 @@ TEST_F(SystemTests, ReturnsCurrentUsername)
 
     const auto username = system->get_username();
     ASSERT_TRUE(username.succeeded()) << username.message();
-    EXPECT_EQ(username.value(), L"Katsu");
+    EXPECT_FALSE(username.value().empty());
 }
 
 }

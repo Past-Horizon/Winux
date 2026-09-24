@@ -130,4 +130,19 @@ Core::Result<void> Win32::write_file(
     return Core::Result<void>::success();
 }
 
+Core::Result<void> Win32::move_file(
+    const std::filesystem::path& source,
+    const std::filesystem::path& destination)
+{
+    if (!MoveFileExW(source.c_str(), destination.c_str(), 0))
+    {
+        return Core::Result<void>::failure(
+            "Unable to move file from " + source.string() + " to " +
+            destination.string() + " (error " +
+            std::to_string(GetLastError()) + ")");
+    }
+
+    return Core::Result<void>::success();
+}
+
 }

@@ -99,6 +99,58 @@ TEST_F(FileSystemTests, WriteAndReadFileSucceeds)
     std::filesystem::remove(file, cleanup_error);
 }
 
+TEST_F(FileSystemTests, MoveFileSucceeds)
+{
+    const auto temp = file_system->temp();
+    ASSERT_TRUE(temp.succeeded()) << temp.message();
+
+    const std::filesystem::path source = temp.value() / "winux-filesystem-move-source.txt";
+    const std::filesystem::path destination = temp.value() / "winux-filesystem-move-destination.txt";
+    std::error_code cleanup_error;
+    std::filesystem::remove(source, cleanup_error);
+    std::filesystem::remove(destination, cleanup_error);
+
+    ASSERT_TRUE(file_system->write_file(source, "Winux move test").succeeded());
+    const auto moved = file_system->move_file(source, destination);
+    ASSERT_TRUE(moved.succeeded()) << moved.message();
+    EXPECT_FALSE(std::filesystem::exists(source));
+    EXPECT_TRUE(std::filesystem::exists(destination));
+
+    const auto contents = file_system->read_file(destination);
+    ASSERT_TRUE(contents.succeeded()) << contents.message();
+    EXPECT_EQ(contents.value(), "Winux move test");
+
+    std::filesystem::remove(destination, cleanup_error);
+}
+
+TEST_F(FileSystemTests, MoveFileFailuresReturnFailure)
+{
+    const auto temp = file_system->temp();
+    ASSERT_TRUE(temp.succeeded()) << temp.message();
+
+    const std::filesystem::path missing_source = temp.value() / "winux-missing-move-source.txt";
+    const std::filesystem::path destination = temp.value() / "winux-move-destination.txt";
+    std::error_code cleanup_error;
+    std::filesystem::remove(missing_source, cleanup_error);
+    std::filesystem::remove(destination, cleanup_error);
+
+    const auto missing = file_system->move_file(missing_source, destination);
+    EXPECT_TRUE(missing.failed());
+    EXPECT_FALSE(missing.message().empty());
+
+    const std::filesystem::path source = temp.value() / "winux-move-source.txt";
+    const std::filesystem::path invalid_destination =
+        temp.value() / "winux-missing-move-directory" / "destination.txt";
+    std::filesystem::remove(source, cleanup_error);
+    ASSERT_TRUE(file_system->write_file(source, "data").succeeded());
+
+    const auto invalid = file_system->move_file(source, invalid_destination);
+    EXPECT_TRUE(invalid.failed());
+    EXPECT_FALSE(invalid.message().empty());
+
+    std::filesystem::remove(source, cleanup_error);
+}
+
 TEST_F(FileSystemTests, ReadAndWriteFailuresReturnFailure)
 {
     const auto temp = file_system->temp();

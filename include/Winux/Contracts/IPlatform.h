@@ -36,6 +36,9 @@ public:
     /*
         @summary
         Returns the operating-system information interface provided by the current platform.
+
+        @return
+        The system service for the current platform.
     */
     virtual ISystem& system() = 0;
 
