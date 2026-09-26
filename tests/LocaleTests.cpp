@@ -108,4 +108,17 @@ TEST(LocaleUtilityTests, ConvertsLeapDayToCivilDateFields)
     EXPECT_EQ(date.day(), std::chrono::day{29});
 }
 
+TEST_F(LocaleTests, ConvertsUtf8AndWideTextStrictly)
+{
+    ASSERT_NE(locale, nullptr);
+
+    const std::string utf8 = "\xF0\x9F\x98\x80";
+    const auto wide = locale->Utf8ToWide(utf8);
+    ASSERT_FALSE(wide.empty());
+    EXPECT_EQ(locale->WideToUtf8(wide), utf8);
+
+    EXPECT_TRUE(locale->Utf8ToWide("\xC0\xAF").empty());
+    EXPECT_TRUE(locale->WideToUtf8(std::wstring(1, static_cast<wchar_t>(0xD800))).empty());
+}
+
 }

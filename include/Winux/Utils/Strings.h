@@ -10,18 +10,6 @@ namespace String
 {
     /*
         @summary
-        Converts a narrow string to a wide string.
-
-        @param value
-        Source string to convert. A null pointer produces an empty string.
-
-        @returns
-        The converted wide string.
-    */
-    std::wstring ToWide(const char* value);
-
-    /*
-        @summary
         Converts a wide string to its UTF-8 text representation.
 
         @param value
@@ -31,6 +19,18 @@ namespace String
         The converted UTF-8 string.
     */
     std::string ToString(const std::wstring& value);
+
+    /*
+        @summary
+        Converts valid UTF-8 text to a wide string. Invalid input returns an empty string.
+    */
+    std::wstring Utf8ToWide(const std::string& value);
+
+    /*
+        @summary
+        Converts a wide string to UTF-8. Invalid input returns an empty string.
+    */
+    std::string WideToUtf8(const std::wstring& value);
 
 #ifdef _WIN32
     /*

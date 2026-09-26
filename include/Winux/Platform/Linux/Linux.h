@@ -50,6 +50,18 @@ public:
     */
     Core::Result<std::chrono::seconds> get_timezone() override;
 
+    /*
+        @summary
+        Converts valid UTF-8 text to a wide string. Invalid input returns an empty string.
+    */
+    std::wstring Utf8ToWide(const std::string& input) override;
+
+    /*
+        @summary
+        Converts a wide string to UTF-8. Invalid input returns an empty string.
+    */
+    std::string WideToUtf8(const std::wstring& input) override;
+
     Core::Result<std::wstring> get_username() override;
 
     /*

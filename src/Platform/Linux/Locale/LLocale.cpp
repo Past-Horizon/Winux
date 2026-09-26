@@ -1,5 +1,6 @@
 #include <Winux/Platform/Linux/Linux.h>
 #include <Winux/Platform/General/Locale.h>
+#include <Winux/Utils/Strings.h>
 
 #include <cerrno>
 #include <ctime>
@@ -67,6 +68,16 @@ Core::Result<std::chrono::seconds> Linux::get_timezone()
 
     return Core::Result<std::chrono::seconds>::success(
         std::chrono::seconds{local_time.value().tm_gmtoff});
+}
+
+std::wstring Linux::Utf8ToWide(const std::string& input)
+{
+    return String::Utf8ToWide(input);
+}
+
+std::string Linux::WideToUtf8(const std::wstring& input)
+{
+    return String::WideToUtf8(input);
 }
 
 }

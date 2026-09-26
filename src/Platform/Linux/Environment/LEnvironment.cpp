@@ -37,7 +37,7 @@ Core::Result<std::wstring> Linux::get_env(const std::wstring& name)
             "Environment variable is not set: " + narrow_name);
     }
 
-    return Core::Result<std::wstring>::success(String::ToWide(value));
+    return Core::Result<std::wstring>::success(String::Utf8ToWide(value));
 }
 
 Core::Result<void> Linux::set_env(

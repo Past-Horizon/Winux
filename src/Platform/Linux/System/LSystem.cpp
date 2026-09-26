@@ -18,7 +18,7 @@ Core::Result<std::wstring> Linux::get_username()
     errno = 0;
     if (const auto* user = getpwuid(geteuid()); user && user->pw_name && user->pw_name[0] != '\0')
     {
-        return Core::Result<std::wstring>::success(String::ToWide(user->pw_name));
+        return Core::Result<std::wstring>::success(String::Utf8ToWide(user->pw_name));
     }
 
     return Core::Result<std::wstring>::failure(

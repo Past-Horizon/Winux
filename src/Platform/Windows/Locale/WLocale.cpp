@@ -1,5 +1,6 @@
 #include <Winux/Platform/Windows/Win32.h>
 #include <Winux/Platform/General/Locale.h>
+#include <Winux/Utils/Strings.h>
 
 #include <windows.h>
 
@@ -81,6 +82,16 @@ Core::Result<std::chrono::seconds> Win32::get_timezone()
 
     return Core::Result<std::chrono::seconds>::success(
         std::chrono::minutes{-bias});
+}
+
+std::wstring Win32::Utf8ToWide(const std::string& input)
+{
+    return String::Utf8ToWide(input);
+}
+
+std::string Win32::WideToUtf8(const std::wstring& input)
+{
+    return String::WideToUtf8(input);
 }
 
 }
