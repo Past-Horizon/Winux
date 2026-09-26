@@ -134,7 +134,7 @@ Core::Result<void> Win32::move_file(
     const std::filesystem::path& source,
     const std::filesystem::path& destination)
 {
-    if (!MoveFileExW(source.c_str(), destination.c_str(), 0))
+    if (!MoveFileExW(source.c_str(), destination.c_str(), MOVEFILE_REPLACE_EXISTING))
     {
         return Core::Result<void>::failure(
             "Unable to move file from " + source.string() + " to " +

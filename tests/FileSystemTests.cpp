@@ -123,6 +123,31 @@ TEST_F(FileSystemTests, MoveFileSucceeds)
     std::filesystem::remove(destination, cleanup_error);
 }
 
+TEST_F(FileSystemTests, MoveFileReplacesExistingDestination)
+{
+    const auto temp = file_system->temp();
+    ASSERT_TRUE(temp.succeeded()) << temp.message();
+
+    const std::filesystem::path source = temp.value() / "winux-filesystem-replace-source.txt";
+    const std::filesystem::path destination = temp.value() / "winux-filesystem-replace-destination.txt";
+    std::error_code cleanup_error;
+    std::filesystem::remove(source, cleanup_error);
+    std::filesystem::remove(destination, cleanup_error);
+
+    ASSERT_TRUE(file_system->write_file(source, "new contents").succeeded());
+    ASSERT_TRUE(file_system->write_file(destination, "old contents").succeeded());
+
+    const auto moved = file_system->move_file(source, destination);
+    ASSERT_TRUE(moved.succeeded()) << moved.message();
+    EXPECT_FALSE(std::filesystem::exists(source));
+
+    const auto contents = file_system->read_file(destination);
+    ASSERT_TRUE(contents.succeeded()) << contents.message();
+    EXPECT_EQ(contents.value(), "new contents");
+
+    std::filesystem::remove(destination, cleanup_error);
+}
+
 TEST_F(FileSystemTests, MoveFileFailuresReturnFailure)
 {
     const auto temp = file_system->temp();

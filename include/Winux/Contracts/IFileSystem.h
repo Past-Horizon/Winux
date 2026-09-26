@@ -125,7 +125,7 @@ public:
         Path to the file to move.
 
         @param destination
-        Path where the file should be moved.
+        Path where the file should be moved. An existing destination is replaced.
 
         @note
         Cross-filesystem moves are not emulated with copy and delete.
