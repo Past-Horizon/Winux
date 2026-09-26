@@ -3,6 +3,7 @@
 #include <Winux/Core/Results.h>
 #include <Winux/Contracts/IEnvironment.h>
 #include <Winux/Contracts/IFileSystem.h>
+#include <Winux/Contracts/ILocale.h>
 #include <Winux/Contracts/IMutex.h>
 #include <Winux/Contracts/IProcess.h>
 #include <Winux/Contracts/ISystem.h>
@@ -41,6 +42,12 @@ public:
         The system service for the current platform.
     */
     virtual ISystem& system() = 0;
+
+    /*
+        @summary
+        Returns the locale and local date/time interface provided by the current platform.
+    */
+    virtual ILocale& locale() = 0;
 
     /*
         @summary

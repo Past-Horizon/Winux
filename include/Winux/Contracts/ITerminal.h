@@ -11,8 +11,7 @@ namespace Winux::Contracts {
 
 /*
     @summary
-    Represents a cross-platform terminal surface that can execute commands and
-    provide NeoWPF-style command objects.
+    Represents a cross-platform terminal surface that can execute commands and other things.
 */
 class ITerminal {
 public:

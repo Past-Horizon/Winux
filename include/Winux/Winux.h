@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Winux/Contracts/IEnvironment.h>
+#include <Winux/Contracts/ILocale.h>
 #include <Winux/Contracts/IMutex.h>
 #include <Winux/Contracts/IProcess.h>
 #include <Winux/Contracts/ISystem.h>

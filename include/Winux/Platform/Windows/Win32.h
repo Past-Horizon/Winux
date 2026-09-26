@@ -5,7 +5,7 @@
 
 namespace Winux::Platform::Windows {
 
-class Win32 final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ITerminal {
+class Win32 final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal {
 public:
     ~Win32() override = default;
 
@@ -26,6 +26,30 @@ public:
         Returns the current user's username on Windows.
     */
     Contracts::ISystem& system() override;
+
+    /*
+        @summary
+        Returns the locale interface provided by Windows.
+    */
+    Contracts::ILocale& locale() override;
+
+    /*
+        @summary
+        Returns the local wall-clock time in 24-hour form with millisecond precision.
+    */
+    Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>> get_time() override;
+
+    /*
+        @summary
+        Returns the current local civil date as year, month, and day fields.
+    */
+    Core::Result<std::chrono::year_month_day> get_date() override;
+
+    /*
+        @summary
+        Returns the current local UTC offset in seconds, positive east of UTC.
+    */
+    Core::Result<std::chrono::seconds> get_timezone() override;
 
     Core::Result<std::wstring> get_username() override;
 

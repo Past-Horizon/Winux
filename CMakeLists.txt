@@ -1,6 +1,20 @@
 ﻿cmake_minimum_required (VERSION 3.10)
 
-project ("Winux")
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/WinuxVersion.txt" WINUX_VERSION)
+string(STRIP "${WINUX_VERSION}" WINUX_VERSION)
+if(NOT WINUX_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+  message(FATAL_ERROR "WinuxVersion.txt must contain a semantic version")
+endif()
+
+project ("Winux" VERSION "${WINUX_VERSION}")
+
+if(WIN32)
+  set(WINUX_PLATFORM "Windows")
+elseif(UNIX)
+  set(WINUX_PLATFORM "Linux")
+else()
+  message(FATAL_ERROR "Unsupported Winux platform: ${CMAKE_SYSTEM_NAME}")
+endif()
 
 option(WINUX_BUILD_TESTS "Build Winux tests" OFF)
 
@@ -13,6 +27,11 @@ elseif (UNIX)
 endif()
 
 add_library(Winux STATIC ${WINUX_SOURCES})
+set(WINUX_OUTPUT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/WinuxBuild/${WINUX_PLATFORM}")
+set_target_properties(Winux PROPERTIES
+  OUTPUT_NAME "Winux.${WINUX_PLATFORM}.$<CONFIG>.${WINUX_VERSION}"
+  ARCHIVE_OUTPUT_DIRECTORY "${WINUX_OUTPUT_ROOT}/$<CONFIG>"
+)
 target_include_directories(Winux PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
@@ -40,6 +59,7 @@ if (WINUX_BUILD_TESTS)
     tests/FileSystemTests.cpp
     tests/MutexTests.cpp
     tests/SystemTests.cpp
+    tests/LocaleTests.cpp
     tests/TerminalTests.cpp
   )
 

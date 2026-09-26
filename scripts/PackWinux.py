@@ -118,9 +118,13 @@ def selected_configs(args: argparse.Namespace) -> list[str]:
 def find_library(platform_key: str, config: str, version: str) -> Path | None:
     info = PLATFORMS[platform_key]
     build_dir = BUILD_ROOT / info["folder"] / config
-    filenames = ("Winux.lib",) if info["extension"] == ".lib" else ("libWinux.a",)
-    candidates = [build_dir / filename for filename in filenames]
-    return next((candidate for candidate in candidates if candidate.is_file()), None)
+    filename = (
+        f"Winux.{info['file_platform']}.{config}.{version}{info['extension']}"
+        if info["extension"] == ".lib"
+        else f"libWinux.{info['file_platform']}.{config}.{version}{info['extension']}"
+    )
+    candidate = build_dir / filename
+    return candidate if candidate.is_file() else None
 
 
 def validate_package_files() -> None:
