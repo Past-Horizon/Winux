@@ -22,6 +22,8 @@ Winux is built around a few simple goals:
 | Windows  | ✅ Mature   | Primary development target |
 | Linux    | 🟡 Less Mature | Under active development   |
 
+By less mature, it means that the platform is less frequently tested; not that it's missing features or does not work.
+
 
 ## Features
 

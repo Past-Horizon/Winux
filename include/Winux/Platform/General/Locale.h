@@ -3,7 +3,7 @@
 #include <chrono>
 #include <ctime>
 
-namespace Winux::Platform::detail {
+namespace Winux::Platform {
 
 /*
     @summary

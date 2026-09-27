@@ -4,7 +4,7 @@
 
 namespace Winux::Platform::Linux {
 
-class Linux final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal {
+class Linux final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal, public Contracts::ICrypto {
 public:
     ~Linux() override = default;
 
@@ -75,6 +75,23 @@ public:
         Returns the terminal interface provided by the Linux platform.
     */
     Contracts::ITerminal& terminal() override;
+
+    Contracts::ICrypto& crypto() override;
+
+    Core::Result<void> fill_random(std::span<std::byte> output) override;
+
+    Core::Result<Contracts::ICrypto::Sha256Digest> sha256(
+        std::span<const std::byte> input) override;
+
+    Core::Result<Contracts::ICrypto::Sha256Digest> hmac_sha256(
+        std::span<const std::byte> key,
+        std::span<const std::byte> input) override;
+
+    Core::Result<void> hkdf_sha256(
+        std::span<const std::byte> input_key_material,
+        std::span<const std::byte> salt,
+        std::span<const std::byte> info,
+        std::span<std::byte> output) override;
 
     /*
         @summary

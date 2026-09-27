@@ -84,7 +84,7 @@ TEST(LocaleUtilityTests, ConvertsLocalTimeFieldsWithoutFormatting)
     local_time.tm_min = 58;
     local_time.tm_sec = 57;
 
-    const auto time = Winux::Platform::detail::make_local_time(
+    const auto time = Winux::Platform::make_local_time(
         local_time, std::chrono::milliseconds{321});
 
     EXPECT_EQ(time.hours(), std::chrono::hours{23});
@@ -100,7 +100,7 @@ TEST(LocaleUtilityTests, ConvertsLeapDayToCivilDateFields)
     local_time.tm_mon = 1;
     local_time.tm_mday = 29;
 
-    const auto date = Winux::Platform::detail::make_local_date(local_time);
+    const auto date = Winux::Platform::make_local_date(local_time);
 
     ASSERT_TRUE(date.ok());
     EXPECT_EQ(date.year(), std::chrono::year{2024});

@@ -1,6 +1,6 @@
 #include <Winux/Platform/General/Locale.h>
 
-namespace Winux::Platform::detail {
+namespace Winux::Platform {
 
 std::chrono::hh_mm_ss<std::chrono::milliseconds> make_local_time(
     const std::tm& local_time,

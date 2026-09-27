@@ -45,7 +45,7 @@ Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>> Win32::get_time()
     const auto subseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
         now - std::chrono::floor<std::chrono::seconds>(now));
     return Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>>::success(
-        detail::make_local_time(local_time.value(), subseconds));
+        make_local_time(local_time.value(), subseconds));
 }
 
 Core::Result<std::chrono::year_month_day> Win32::get_date()
@@ -57,7 +57,7 @@ Core::Result<std::chrono::year_month_day> Win32::get_date()
     }
 
     return Core::Result<std::chrono::year_month_day>::success(
-        detail::make_local_date(local_time.value()));
+        make_local_date(local_time.value()));
 }
 
 Core::Result<std::chrono::seconds> Win32::get_timezone()

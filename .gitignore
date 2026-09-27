@@ -4,3 +4,4 @@ out
 build
 private
 WinuxBuild
+vcpkg_installed

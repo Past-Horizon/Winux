@@ -8,6 +8,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "cl.exe",
                 "CMAKE_CXX_COMPILER": "cl.exe",
+                "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed",
                 "WINUX_BUILD_TESTS": "ON"
             },
             "condition": {
@@ -27,6 +28,7 @@
                 "strategy": "external"
             },
             "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
             }
@@ -76,6 +78,8 @@
             "installDir": "${sourceDir}/WinuxBuild/Linux/Debug/install",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
+                "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed",
+                "VCPKG_TARGET_TRIPLET": "x64-linux",
                 "WINUX_BUILD_TESTS": "ON"
             },
             "condition": {

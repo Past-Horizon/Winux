@@ -31,7 +31,7 @@ Core::Result<std::string> Linux::execute_command(const std::wstring& command_lin
             "Unable to execute command: failed to open process pipe");
     }
 
-    const std::string output = Winux::Platform::detail::read_pipe(pipe);
+    const std::string output = Winux::Platform::read_pipe(pipe);
     const int status = pclose(pipe);
     if (status != 0)
     {
@@ -46,7 +46,7 @@ std::shared_ptr<Contracts::ITerminal::ICommand> Linux::create_command(
     ExecuteHandler execute_handler,
     CanExecuteHandler can_execute_handler)
 {
-    return Winux::Platform::detail::make_terminal_command(
+    return Winux::Platform::make_terminal_command(
         std::move(execute_handler),
         std::move(can_execute_handler));
 }

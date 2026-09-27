@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Winux/Core/Results.h>
+#include <Winux/Contracts/ICrypto.h>
 #include <Winux/Contracts/IEnvironment.h>
 #include <Winux/Contracts/IFileSystem.h>
 #include <Winux/Contracts/ILocale.h>
@@ -60,6 +61,12 @@ public:
         Returns the terminal abstraction provided by the current platform.
     */
     virtual ITerminal& terminal() = 0;
+
+    /*
+        @summary
+        Returns the operating-system-backed cryptographic random-byte service.
+    */
+    virtual ICrypto& crypto() = 0;
 
     /*
         @summary

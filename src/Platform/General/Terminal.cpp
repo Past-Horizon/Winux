@@ -13,8 +13,6 @@
 
 namespace Winux::Platform {
 
-namespace detail {
-
 std::string read_pipe(std::FILE* pipe)
 {
     std::array<char, 4096> buffer{};
@@ -115,8 +113,6 @@ std::shared_ptr<Contracts::ITerminal::ICommand> make_terminal_command(
     Contracts::ITerminal::CanExecuteHandler can_execute_handler)
 {
     return std::make_shared<TerminalCommand>(std::move(execute_handler), std::move(can_execute_handler));
-}
-
 }
 
 }

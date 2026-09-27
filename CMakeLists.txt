@@ -10,11 +10,19 @@ project ("Winux" VERSION "${WINUX_VERSION}")
 
 if(WIN32)
   set(WINUX_PLATFORM "Windows")
+  set(VCPKG_TARGET_TRIPLET "x64-windows-static-md" CACHE STRING
+    "vcpkg triplet used for Windows dependencies")
 elseif(UNIX)
   set(WINUX_PLATFORM "Linux")
+  set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING
+    "vcpkg triplet used for Linux dependencies")
 else()
   message(FATAL_ERROR "Unsupported Winux platform: ${CMAKE_SYSTEM_NAME}")
 endif()
+
+set(WINUX_VCPKG_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
+list(PREPEND CMAKE_PREFIX_PATH "${WINUX_VCPKG_PREFIX}")
+find_package(MbedTLS CONFIG REQUIRED)
 
 option(WINUX_BUILD_TESTS "Build Winux tests" OFF)
 
@@ -38,6 +46,9 @@ target_include_directories(Winux PUBLIC
 
 target_compile_features(Winux PUBLIC cxx_std_20)
 
+include(cmake/StaticLibMerge.cmake)
+winux_merge_static_libraries(Winux MbedTLS::mbedtls)
+
 if (WIN32)
   target_link_libraries(Winux PRIVATE Shell32)
 endif()
@@ -56,6 +67,7 @@ if (WINUX_BUILD_TESTS)
   enable_testing()
   add_executable(WinuxProcessTests
     tests/ProcessTests.cpp
+    tests/CryptoTests.cpp
     tests/FileSystemTests.cpp
     tests/MutexTests.cpp
     tests/SystemTests.cpp
