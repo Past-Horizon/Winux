@@ -163,6 +163,13 @@ def package_platform(
     version: str,
 ) -> Path:
     info = PLATFORMS[platform_key]
+    build_dir = sources[0][1].parent
+    cudev_include_dir = build_dir / "package-include" / "Cudev"
+    cudev_license = build_dir / "Cudev-LICENSE"
+    if not cudev_include_dir.is_dir():
+        raise FileNotFoundError(f"couldn't find Cudev headers: {cudev_include_dir}")
+    if not cudev_license.is_file():
+        raise FileNotFoundError(f"couldn't find Cudev license: {cudev_license}")
 
     PACKAGE_ROOT.mkdir(parents=True, exist_ok=True)
 
@@ -177,11 +184,17 @@ def package_platform(
     ) as archive:
         # Package layout: LICENSE, Winux headers, and libraries by config.
         archive.write(LICENSE_FILE, "LICENSE")
+        archive.write(cudev_license, "Cudev-LICENSE")
 
         add_directory_to_zip(
             archive,
             INCLUDE_ROOT / "Winux",
             "Winux",
+        )
+        add_directory_to_zip(
+            archive,
+            cudev_include_dir,
+            "Cudev",
         )
 
         for config, source in sources:

@@ -1,10 +1,4 @@
-#include <string>
-#include <cstdint>
-#include <climits>
-#include <iterator>
-#include <limits>
-#include <type_traits>
-
+#include <Cudev/Cudev.h>
 #include <Winux/Utils/Strings.h>
 
 #ifdef _WIN32
@@ -13,119 +7,46 @@
 
 namespace {
 
-#ifndef _WIN32
-
-static_assert(sizeof(wchar_t) == 4,
-    "WideToUtf8/Utf8ToWide require a 32-bit wchar_t outside Windows.");
-
-constexpr char32_t MaxCodePoint = 0x10FFFF;
-constexpr char32_t SurrogateMin = 0xD800;
-constexpr char32_t SurrogateMax = 0xDFFF;
-
-bool IsValidCodePoint(char32_t code_point) noexcept
+const char* CodecErrorMessage(Cudev::CodecError error) noexcept
 {
-    return code_point <= MaxCodePoint &&
-           !(code_point >= SurrogateMin && code_point <= SurrogateMax);
+    switch (error)
+    {
+    case Cudev::CodecError::InvalidLeadingByte:
+        return "Invalid leading byte.";
+    case Cudev::CodecError::InvalidContinuationByte:
+        return "Invalid continuation byte.";
+    case Cudev::CodecError::TruncatedSequence:
+        return "Truncated encoded sequence.";
+    case Cudev::CodecError::OverlongEncoding:
+        return "Overlong encoding.";
+    case Cudev::CodecError::SurrogateCodePoint:
+        return "Surrogate code point is not valid Unicode text.";
+    case Cudev::CodecError::CodePointOutOfRange:
+        return "Code point is outside the Unicode range.";
+    }
+    return "Unknown Unicode codec error.";
 }
 
-bool AppendUtf8(char32_t code_point, std::string& output)
+template <typename Value>
+Winux::Core::Result<Value> ToWinuxResult(
+    const Cudev::Result<Value, Cudev::CodecError>& result)
 {
-    if (!IsValidCodePoint(code_point))
+    if (result.failed())
     {
-        return false;
+        return Winux::Core::Result<Value>::failure(CodecErrorMessage(*result.error()));
     }
-
-    if (code_point <= 0x7F)
-    {
-        output.push_back(static_cast<char>(code_point));
-    }
-    else if (code_point <= 0x7FF)
-    {
-        output.push_back(static_cast<char>(0xC0 | (code_point >> 6)));
-        output.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
-    }
-    else if (code_point <= 0xFFFF)
-    {
-        output.push_back(static_cast<char>(0xE0 | (code_point >> 12)));
-        output.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3F)));
-        output.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
-    }
-    else
-    {
-        output.push_back(static_cast<char>(0xF0 | (code_point >> 18)));
-        output.push_back(static_cast<char>(0x80 | ((code_point >> 12) & 0x3F)));
-        output.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3F)));
-        output.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
-    }
-    return true;
+    return Winux::Core::Result<Value>::success(result.value());
 }
 
-bool DecodeUtf8CodePoint(
-    std::string::const_iterator& iterator,
-    std::string::const_iterator end,
-    char32_t& code_point)
+Winux::Core::Result<void> ToWinuxResult(
+    const Cudev::Result<void, Cudev::CodecError>& result)
 {
-    const auto first_byte = static_cast<unsigned char>(*iterator);
-    std::size_t sequence_length = 0;
-    char32_t value = 0;
-    char32_t minimum_value = 0;
-
-    if ((first_byte & 0x80) == 0x00)
+    if (result.failed())
     {
-        sequence_length = 1;
-        value = first_byte;
+        return Winux::Core::Result<void>::failure(CodecErrorMessage(*result.error()));
     }
-    else if ((first_byte & 0xE0) == 0xC0)
-    {
-        sequence_length = 2;
-        value = first_byte & 0x1F;
-        minimum_value = 0x80;
-    }
-    else if ((first_byte & 0xF0) == 0xE0)
-    {
-        sequence_length = 3;
-        value = first_byte & 0x0F;
-        minimum_value = 0x800;
-    }
-    else if ((first_byte & 0xF8) == 0xF0)
-    {
-        sequence_length = 4;
-        value = first_byte & 0x07;
-        minimum_value = 0x10000;
-    }
-    else
-    {
-        return false;
-    }
-
-    if (static_cast<std::size_t>(std::distance(iterator, end)) < sequence_length)
-    {
-        return false;
-    }
-
-    auto cursor = iterator;
-    ++cursor;
-    for (std::size_t index = 1; index < sequence_length; ++index, ++cursor)
-    {
-        const auto continuation_byte = static_cast<unsigned char>(*cursor);
-        if ((continuation_byte & 0xC0) != 0x80)
-        {
-            return false;
-        }
-        value = (value << 6) | (continuation_byte & 0x3F);
-    }
-
-    if (value < minimum_value || !IsValidCodePoint(value))
-    {
-        return false;
-    }
-
-    code_point = value;
-    iterator = cursor;
-    return true;
+    return Winux::Core::Result<void>::success();
 }
-
-#endif
 
 }
 
@@ -134,143 +55,124 @@ namespace String
 
 std::string ToString(const std::wstring& value)
 {
-    std::string result;
-    result.reserve(value.size());
-
-    for (size_t i = 0; i < value.size(); ++i)
-    {
-        uint32_t cp = static_cast<uint32_t>(value[i]);
-
-#if WCHAR_MAX <= 0xFFFF
-        if (cp >= 0xD800 && cp <= 0xDBFF) {
-            if (i + 1 < value.size()) {
-                uint32_t low = static_cast<uint32_t>(value[i + 1]);
-                if (low >= 0xDC00 && low <= 0xDFFF) {
-                    cp = 0x10000 + ((cp - 0xD800) << 10) + (low - 0xDC00);
-                    ++i;
-                } else {
-                    cp = 0xFFFD;
-                }
-            } else {
-                cp = 0xFFFD;
-            }
-        }
-        else if (cp >= 0xDC00 && cp <= 0xDFFF) {
-            cp = 0xFFFD;
-        }
-#endif
-        if (cp > 0x10FFFF) cp = 0xFFFD;
-
-        if (cp < 0x80) {
-            result.push_back(static_cast<char>(cp));
-        } else if (cp < 0x800) {
-            result.push_back(static_cast<char>(0xC0 | (cp >> 6)));
-            result.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-        } else if (cp < 0x10000) {
-            result.push_back(static_cast<char>(0xE0 | (cp >> 12)));
-            result.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-            result.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-        } else {
-            result.push_back(static_cast<char>(0xF0 | (cp >> 18)));
-            result.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
-            result.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-            result.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-        }
-    }
-
-    return result;
+    return WideToUtf8(value);
 }
 
-std::string WideToUtf8(const std::wstring& input)
+std::string WideToUtf8(const std::wstring& value)
 {
-    if (input.empty())
-    {
-        return {};
-    }
-
-#ifdef _WIN32
-    if (input.size() > static_cast<std::size_t>((std::numeric_limits<int>::max)()))
-    {
-        return {};
-    }
-
-    const int required_size = WideCharToMultiByte(
-        CP_UTF8, WC_ERR_INVALID_CHARS, input.data(), static_cast<int>(input.size()),
-        nullptr, 0, nullptr, nullptr);
-    if (required_size <= 0)
-    {
-        return {};
-    }
-
-    std::string output(static_cast<std::size_t>(required_size), '\0');
-    if (WideCharToMultiByte(
-            CP_UTF8, WC_ERR_INVALID_CHARS, input.data(), static_cast<int>(input.size()),
-            output.data(), required_size, nullptr, nullptr) <= 0)
-    {
-        return {};
-    }
-    return output;
-#else
-    std::string output;
-    output.reserve(input.size());
-    for (const wchar_t wide_character : input)
-    {
-        const auto code_point = static_cast<char32_t>(
-            static_cast<std::make_unsigned_t<wchar_t>>(wide_character));
-        if (!AppendUtf8(code_point, output))
-        {
-            return {};
-        }
-    }
-    return output;
-#endif
+    const auto result = Cudev::Wide::ToUtf8(value);
+    return result.succeeded() ? result.value() : std::string{};
 }
 
-std::wstring Utf8ToWide(const std::string& input)
+std::wstring Utf8ToWide(const std::string& value)
 {
-    if (input.empty())
-    {
-        return {};
-    }
+    const auto result = Cudev::Wide::FromUtf8(value);
+    return result.succeeded() ? result.value() : std::wstring{};
+}
 
-#ifdef _WIN32
-    if (input.size() > static_cast<std::size_t>((std::numeric_limits<int>::max)()))
-    {
-        return {};
-    }
+Winux::Core::Result<std::string> ToUtf8(std::u16string_view value)
+{
+    return ToWinuxResult(Cudev::Convert::ToUtf8(value));
+}
 
-    const int required_size = MultiByteToWideChar(
-        CP_UTF8, MB_ERR_INVALID_CHARS, input.data(), static_cast<int>(input.size()),
-        nullptr, 0);
-    if (required_size <= 0)
-    {
-        return {};
-    }
+Winux::Core::Result<std::string> ToUtf8(std::u32string_view value)
+{
+    return ToWinuxResult(Cudev::Convert::ToUtf8(value));
+}
 
-    std::wstring output(static_cast<std::size_t>(required_size), L'\0');
-    if (MultiByteToWideChar(
-            CP_UTF8, MB_ERR_INVALID_CHARS, input.data(), static_cast<int>(input.size()),
-            output.data(), required_size) <= 0)
-    {
-        return {};
-    }
-    return output;
-#else
-    std::wstring output;
-    output.reserve(input.size());
-    auto iterator = input.begin();
-    const auto end = input.end();
-    while (iterator != end)
-    {
-        char32_t code_point = 0;
-        if (!DecodeUtf8CodePoint(iterator, end, code_point))
-        {
-            return {};
-        }
-        output.push_back(static_cast<wchar_t>(code_point));
-    }
-    return output;
-#endif
+Winux::Core::Result<std::string> ToUtf8(std::wstring_view value)
+{
+    return ToWinuxResult(Cudev::Wide::ToUtf8(value));
+}
+
+Winux::Core::Result<std::u16string> ToUtf16(std::string_view value)
+{
+    return ToWinuxResult(Cudev::Convert::ToUtf16(value));
+}
+
+Winux::Core::Result<std::u16string> ToUtf16(std::u32string_view value)
+{
+    return ToWinuxResult(Cudev::Convert::ToUtf16(value));
+}
+
+Winux::Core::Result<std::u16string> ToUtf16(std::wstring_view value)
+{
+    return ToWinuxResult(Cudev::Wide::ToUtf16(value));
+}
+
+Winux::Core::Result<std::u32string> ToUtf32(std::string_view value)
+{
+    return ToWinuxResult(Cudev::Convert::ToUtf32(value));
+}
+
+Winux::Core::Result<std::u32string> ToUtf32(std::u16string_view value)
+{
+    return ToWinuxResult(Cudev::Convert::ToUtf32(value));
+}
+
+Winux::Core::Result<std::u32string> ToUtf32(std::wstring_view value)
+{
+    return ToWinuxResult(Cudev::Wide::ToUtf32(value));
+}
+
+Winux::Core::Result<std::wstring> FromUtf8(std::string_view value)
+{
+    return ToWinuxResult(Cudev::Wide::FromUtf8(value));
+}
+
+Winux::Core::Result<std::wstring> FromUtf16(std::u16string_view value)
+{
+    return ToWinuxResult(Cudev::Wide::FromUtf16(value));
+}
+
+Winux::Core::Result<std::wstring> FromUtf32(std::u32string_view value)
+{
+    return ToWinuxResult(Cudev::Wide::FromUtf32(value));
+}
+
+Winux::Core::Result<std::string> EncodeUtf8(std::u32string_view value)
+{
+    return ToWinuxResult(Cudev::Utf8::U8Codec{}.Encode(value));
+}
+
+Winux::Core::Result<std::u32string> DecodeUtf8(std::string_view value)
+{
+    return ToWinuxResult(Cudev::Utf8::U8Codec{}.Decode(value));
+}
+
+Winux::Core::Result<void> ValidateUtf8(std::string_view value)
+{
+    return ToWinuxResult(Cudev::Utf8::U8Codec{}.Validate(value));
+}
+
+Winux::Core::Result<std::u16string> EncodeUtf16(std::u32string_view value)
+{
+    return ToWinuxResult(Cudev::Utf16::U16Codec{}.Encode(value));
+}
+
+Winux::Core::Result<std::u32string> DecodeUtf16(std::u16string_view value)
+{
+    return ToWinuxResult(Cudev::Utf16::U16Codec{}.Decode(value));
+}
+
+Winux::Core::Result<void> ValidateUtf16(std::u16string_view value)
+{
+    return ToWinuxResult(Cudev::Utf16::U16Codec{}.Validate(value));
+}
+
+Winux::Core::Result<std::u32string> EncodeUtf32(std::u32string_view value)
+{
+    return ToWinuxResult(Cudev::Utf32::U32Codec{}.Encode(value));
+}
+
+Winux::Core::Result<std::u32string> DecodeUtf32(std::u32string_view value)
+{
+    return ToWinuxResult(Cudev::Utf32::U32Codec{}.Decode(value));
+}
+
+Winux::Core::Result<void> ValidateUtf32(std::u32string_view value)
+{
+    return ToWinuxResult(Cudev::Utf32::U32Codec{}.Validate(value));
 }
 
 #ifdef _WIN32

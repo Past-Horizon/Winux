@@ -121,4 +121,24 @@ TEST_F(LocaleTests, ConvertsUtf8AndWideTextStrictly)
     EXPECT_TRUE(locale->WideToUtf8(std::wstring(1, static_cast<wchar_t>(0xD800))).empty());
 }
 
+TEST_F(LocaleTests, ExposesUnicodeConversionsThroughLocaleContract)
+{
+    ASSERT_NE(locale, nullptr);
+
+    const std::u32string scalars = U"A\U0001F642";
+    const auto utf8 = locale->EncodeUtf8(scalars);
+    ASSERT_TRUE(utf8.succeeded()) << utf8.message();
+
+    const auto utf16 = locale->ToUtf16(utf8.value());
+    ASSERT_TRUE(utf16.succeeded()) << utf16.message();
+    const auto decoded = locale->DecodeUtf16(utf16.value());
+    ASSERT_TRUE(decoded.succeeded()) << decoded.message();
+    EXPECT_EQ(decoded.value(), scalars);
+    EXPECT_TRUE(locale->ValidateUtf8(utf8.value()).succeeded());
+
+    const auto malformed = locale->DecodeUtf8("\xC0\xAF");
+    EXPECT_TRUE(malformed.failed());
+    EXPECT_FALSE(malformed.message().empty());
+}
+
 }

@@ -9,3 +9,4 @@
 #include <Winux/Contracts/ITerminal.h>
 #include <Winux/Platform/Platform.h>
 #include <Winux/Utils/Logger.h>
+#include <Winux/Utils/Strings.h>

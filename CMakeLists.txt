@@ -1,4 +1,4 @@
-﻿cmake_minimum_required (VERSION 3.10)
+﻿cmake_minimum_required (VERSION 3.14)
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/WinuxVersion.txt" WINUX_VERSION)
 string(STRIP "${WINUX_VERSION}" WINUX_VERSION)
@@ -22,7 +22,36 @@ endif()
 
 set(WINUX_VCPKG_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
 list(PREPEND CMAKE_PREFIX_PATH "${WINUX_VCPKG_PREFIX}")
-find_package(MbedTLS CONFIG REQUIRED)
+find_package(MbedTLS CONFIG REQUIRED
+  PATHS "${WINUX_VCPKG_PREFIX}/share/mbedtls"
+  NO_DEFAULT_PATH
+)
+
+include(FetchContent)
+
+option(WINUX_USE_LOCAL_CUDEV "Use the sibling Cudev checkout" OFF)
+if(WINUX_USE_LOCAL_CUDEV)
+  get_filename_component(WINUX_CUDEV_SOURCE_DIR
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Cudev" ABSOLUTE)
+  if(NOT EXISTS "${WINUX_CUDEV_SOURCE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR
+      "WINUX_USE_LOCAL_CUDEV is ON, but no Cudev project was found at ${WINUX_CUDEV_SOURCE_DIR}")
+  endif()
+  add_subdirectory("${WINUX_CUDEV_SOURCE_DIR}"
+    "${CMAKE_CURRENT_BINARY_DIR}/_deps/cudev-build")
+else()
+  FetchContent_Declare(
+    cudev
+    URL https://github.com/Past-Horizon/Cudev/archive/refs/tags/v0.1.1.zip
+  )
+  FetchContent_MakeAvailable(cudev)
+  set(WINUX_CUDEV_SOURCE_DIR "${cudev_SOURCE_DIR}")
+endif()
+
+file(COPY "${WINUX_CUDEV_SOURCE_DIR}/include/Cudev"
+  DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/package-include")
+configure_file("${WINUX_CUDEV_SOURCE_DIR}/LICENSE"
+  "${CMAKE_CURRENT_BINARY_DIR}/Cudev-LICENSE" COPYONLY)
 
 option(WINUX_BUILD_TESTS "Build Winux tests" OFF)
 
@@ -42,12 +71,14 @@ set_target_properties(Winux PROPERTIES
 )
 target_include_directories(Winux PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  "$<BUILD_INTERFACE:${WINUX_CUDEV_SOURCE_DIR}/include>"
 )
+add_dependencies(Winux Cudev)
 
 target_compile_features(Winux PUBLIC cxx_std_20)
 
 include(cmake/StaticLibMerge.cmake)
-winux_merge_static_libraries(Winux MbedTLS::mbedtls)
+winux_merge_static_libraries(Winux MbedTLS::mbedtls Cudev)
 
 if (WIN32)
   target_link_libraries(Winux PRIVATE Shell32)
@@ -55,7 +86,6 @@ endif()
 
 if (WINUX_BUILD_TESTS)
   include(FetchContent)
-
   FetchContent_Declare(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
@@ -73,6 +103,7 @@ if (WINUX_BUILD_TESTS)
     tests/SystemTests.cpp
     tests/LocaleTests.cpp
     tests/TerminalTests.cpp
+    tests/StringUtilsTests.cpp
   )
 
   target_link_libraries(WinuxProcessTests
