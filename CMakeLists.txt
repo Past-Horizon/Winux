@@ -29,7 +29,7 @@ find_package(MbedTLS CONFIG REQUIRED
 
 include(FetchContent)
 
-option(WINUX_USE_LOCAL_CUDEV "Use the sibling Cudev checkout" OFF)
+option(WINUX_USE_LOCAL_CUDEV "Use the sibling Cudev checkout" ON)
 if(WINUX_USE_LOCAL_CUDEV)
   get_filename_component(WINUX_CUDEV_SOURCE_DIR
     "${CMAKE_CURRENT_SOURCE_DIR}/../Cudev" ABSOLUTE)

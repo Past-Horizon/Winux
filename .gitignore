@@ -5,3 +5,4 @@ build
 private
 WinuxBuild
 vcpkg_installed
+.venv
