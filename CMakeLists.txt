@@ -29,7 +29,7 @@ find_package(MbedTLS CONFIG REQUIRED
 
 include(FetchContent)
 
-option(WINUX_USE_LOCAL_CUDEV "Use the sibling Cudev checkout" ON)
+option(WINUX_USE_LOCAL_CUDEV "Use the sibling Cudev checkout" OFF)
 if(WINUX_USE_LOCAL_CUDEV)
   get_filename_component(WINUX_CUDEV_SOURCE_DIR
     "${CMAKE_CURRENT_SOURCE_DIR}/../Cudev" ABSOLUTE)
@@ -42,7 +42,7 @@ if(WINUX_USE_LOCAL_CUDEV)
 else()
   FetchContent_Declare(
     cudev
-    URL https://github.com/Past-Horizon/Cudev/archive/refs/tags/v0.1.1.zip
+    URL https://github.com/Past-Horizon/Cudev/archive/refs/tags/v0.1.2.zip
   )
   FetchContent_MakeAvailable(cudev)
   set(WINUX_CUDEV_SOURCE_DIR "${cudev_SOURCE_DIR}")
