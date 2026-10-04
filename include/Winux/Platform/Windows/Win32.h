@@ -6,7 +6,7 @@
 
 namespace Winux::Platform::Windows {
 
-class Win32 final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal, public Contracts::ICrypto {
+class Win32 final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal, public Contracts::ICrypto, public Contracts::INetwork {
 public:
     ~Win32() override = default;
 
@@ -69,6 +69,8 @@ public:
     Contracts::ITerminal& GetTerminal() override;
 
     Contracts::ICrypto& GetCrypto() override { return *this; }
+
+    Contracts::INetwork& GetNetwork() override { return *this; }
 
     /*
         @summary

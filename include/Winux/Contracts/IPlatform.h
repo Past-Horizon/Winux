@@ -5,6 +5,7 @@
 #include <Winux/Contracts/ICrypto.h>
 #include <Winux/Contracts/IEnvironment.h>
 #include <Winux/Contracts/IFileSystem.h>
+#include <Winux/Contracts/INetwork.h>
 #include <Winux/Contracts/ILocale.h>
 #include <Winux/Contracts/IMutex.h>
 #include <Winux/Contracts/IProcess.h>
@@ -18,7 +19,7 @@ namespace Winux::Contracts {
 
 /*
     @summary
-    Exposes the platform-specific process, environment, file-system, system, and mutex services.
+    Exposes the common and platform-specific services available on the current operating system.
 */
 class IPlatform {
 public:
@@ -68,6 +69,12 @@ public:
         Returns the operating-system-backed cryptographic random-byte service.
     */
     virtual ICrypto& GetCrypto() = 0;
+
+    /*
+        @summary
+        Returns the HTTP network service.
+    */
+    virtual INetwork& GetNetwork() = 0;
 
     /*
         @summary

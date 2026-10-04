@@ -85,6 +85,11 @@ template <> Locale& Get<Locale>()
     return ::GetInitializedPlatform().GetLocale();
 }
 
+template <> Network& Get<Network>()
+{
+    return ::GetInitializedPlatform().GetNetwork();
+}
+
 template <> Process& Get<Process>()
 {
     return ::GetInitializedPlatform().GetProcess();

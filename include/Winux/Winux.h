@@ -27,6 +27,7 @@ Cross-platform C++ system APIs for Windows and Linux.
 #include <Winux/Contracts/ICrypto.h>
 #include <Winux/Contracts/ILocale.h>
 #include <Winux/Contracts/IMutex.h>
+#include <Winux/Contracts/INetwork.h>
 #include <Winux/Contracts/IProcess.h>
 #include <Winux/Contracts/ISystem.h>
 #include <Winux/Contracts/ITerminal.h>
@@ -59,6 +60,12 @@ using FileSystem = Contracts::IFileSystem;
 using Locale = Contracts::ILocale;
 
 using Mutex = Contracts::IMutex;
+
+using Network = Contracts::INetwork;
+
+using NetworkRequest = Contracts::INetwork::Request;
+
+using NetworkResponse = Contracts::INetwork::Response;
 
 using Process = Contracts::IProcess;
 
@@ -109,6 +116,7 @@ template <> Crypto& Get<Crypto>();
 template <> Environment& Get<Environment>();
 template <> FileSystem& Get<FileSystem>();
 template <> Locale& Get<Locale>();
+template <> Network& Get<Network>();
 template <> Process& Get<Process>();
 template <> PlatformContext& Get<PlatformContext>();
 template <> System& Get<System>();

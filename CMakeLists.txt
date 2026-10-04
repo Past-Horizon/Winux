@@ -26,6 +26,22 @@ find_package(MbedTLS CONFIG REQUIRED
   PATHS "${WINUX_VCPKG_PREFIX}/share/mbedtls"
   NO_DEFAULT_PATH
 )
+if(WIN32)
+  set(ZLIB_ROOT "${WINUX_VCPKG_PREFIX}")
+  set(ZLIB_USE_STATIC_LIBS ON)
+  set(ZLIB_INCLUDE_DIR "${WINUX_VCPKG_PREFIX}/include" CACHE PATH "Zlib include directory" FORCE)
+  set(ZLIB_LIBRARY_RELEASE "${WINUX_VCPKG_PREFIX}/lib/zs.lib" CACHE FILEPATH "Zlib release library" FORCE)
+  set(ZLIB_LIBRARY_DEBUG "${WINUX_VCPKG_PREFIX}/debug/lib/zsd.lib" CACHE FILEPATH "Zlib debug library" FORCE)
+endif()
+find_package(ZLIB REQUIRED)
+find_package(ZLIB CONFIG REQUIRED
+  PATHS "${WINUX_VCPKG_PREFIX}/share/zlib"
+  NO_DEFAULT_PATH
+)
+find_package(CURL CONFIG REQUIRED
+  PATHS "${WINUX_VCPKG_PREFIX}/share/curl"
+  NO_DEFAULT_PATH
+)
 
 include(FetchContent)
 
@@ -78,7 +94,7 @@ add_dependencies(Winux Cudev)
 target_compile_features(Winux PUBLIC cxx_std_20)
 
 include(cmake/StaticLibMerge.cmake)
-winux_merge_static_libraries(Winux MbedTLS::mbedtls Cudev)
+winux_merge_static_libraries(Winux MbedTLS::mbedtls CURL::libcurl ZLIB::ZLIBSTATIC Cudev)
 
 if (WIN32)
   target_link_libraries(Winux PRIVATE Shell32)
@@ -98,6 +114,7 @@ if (WINUX_BUILD_TESTS)
   add_executable(WinuxProcessTests
     tests/ProcessTests.cpp
     tests/CryptoTests.cpp
+    tests/NetworkTests.cpp
     tests/FileSystemTests.cpp
     tests/MutexTests.cpp
     tests/SystemTests.cpp

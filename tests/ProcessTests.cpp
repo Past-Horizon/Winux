@@ -25,9 +25,10 @@ protected:
     {
         for (const std::uint32_t process_id : created_processes)
         {
-            if (process->IsRunning(process_id).Succeeded())
+            const auto running = process->IsRunning(process_id);
+            if (running.Succeeded() && running.Value())
             {
-                process->TerminateProcess(process_id);
+                process->ForceTerminateProcess(process_id);
             }
         }
     }

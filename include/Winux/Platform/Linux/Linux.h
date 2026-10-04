@@ -4,7 +4,7 @@
 
 namespace Winux::Platform::Linux {
 
-class Linux final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal, public Contracts::ICrypto {
+class Linux final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal, public Contracts::ICrypto, public Contracts::INetwork {
 public:
     ~Linux() override = default;
 
@@ -67,6 +67,8 @@ public:
     Contracts::ITerminal& GetTerminal() override;
 
     Contracts::ICrypto& GetCrypto() override { return *this; }
+
+    Contracts::INetwork& GetNetwork() override { return *this; }
 
     /*
         @summary
