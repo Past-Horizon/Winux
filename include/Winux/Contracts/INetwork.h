@@ -17,7 +17,7 @@ namespace Winux::Contracts {
 class INetwork {
 public:
     using Header = std::pair<std::string, std::string>;
-    using Headers = std::vector<Header>;
+    using HeaderList = std::vector<Header>;
 
     /*
         @summary
@@ -26,7 +26,7 @@ public:
     struct Request {
         std::string Method = "GET";
         std::string Url;
-        Headers Headers;
+        HeaderList Headers;
         std::vector<std::byte> Body;
         std::chrono::milliseconds Timeout{30000};
         bool FollowRedirects = false;
@@ -38,7 +38,7 @@ public:
     */
     struct Response {
         long StatusCode = 0;
-        Headers Headers;
+        HeaderList Headers;
         std::vector<std::byte> Body;
     };
 
