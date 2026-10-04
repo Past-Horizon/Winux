@@ -15,16 +15,16 @@ bool InvalidName(const std::wstring& name)
 
 }
 
-Contracts::IEnvironment& Win32::environment()
+Contracts::IEnvironment& Win32::GetEnvironment()
 {
     return *this;
 }
 
-Core::Result<std::wstring> Win32::get_env(const std::wstring& name)
+Core::Result<std::wstring> Win32::GetEnv(const std::wstring& name)
 {
     if (InvalidName(name))
     {
-        return Core::Result<std::wstring>::failure("Invalid environment variable name");
+        return Core::Result<std::wstring>::Failure("Invalid environment variable name");
     }
 
     std::wstring buffer(256, L'\0');
@@ -34,50 +34,50 @@ Core::Result<std::wstring> Win32::get_env(const std::wstring& name)
         if (length == 0)
         {
             const DWORD error = GetLastError();
-            return Core::Result<std::wstring>::failure(
+            return Core::Result<std::wstring>::Failure(
                 "Unable to get environment variable (error " + std::to_string(error) + ")");
         }
         if (length < buffer.size())
         {
             buffer.resize(length);
-            return Core::Result<std::wstring>::success(std::move(buffer));
+            return Core::Result<std::wstring>::Success(std::move(buffer));
         }
         buffer.resize(length + 1);
     }
 }
 
-Core::Result<void> Win32::set_env(
+Core::Result<void> Win32::SetEnv(
     const std::wstring& name,
     const std::wstring& value)
 {
     if (InvalidName(name))
     {
-        return Core::Result<void>::failure("Invalid environment variable name");
+        return Core::Result<void>::Failure("Invalid environment variable name");
     }
 
     if (!SetEnvironmentVariableW(name.c_str(), value.c_str()))
     {
-        return Core::Result<void>::failure(
+        return Core::Result<void>::Failure(
             "Unable to set environment variable (error " + std::to_string(GetLastError()) + ")");
     }
 
-    return Core::Result<void>::success();
+    return Core::Result<void>::Success();
 }
 
-Core::Result<void> Win32::unset_env(const std::wstring& name)
+Core::Result<void> Win32::UnsetEnv(const std::wstring& name)
 {
     if (InvalidName(name))
     {
-        return Core::Result<void>::failure("Invalid environment variable name");
+        return Core::Result<void>::Failure("Invalid environment variable name");
     }
 
     if (!SetEnvironmentVariableW(name.c_str(), nullptr))
     {
-        return Core::Result<void>::failure(
+        return Core::Result<void>::Failure(
             "Unable to unset environment variable (error " + std::to_string(GetLastError()) + ")");
     }
 
-    return Core::Result<void>::success();
+    return Core::Result<void>::Success();
 }
 
 }

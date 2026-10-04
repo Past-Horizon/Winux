@@ -18,7 +18,7 @@ namespace {
 
 std::string ErrorMessage(const char* operation, const int error)
 {
-    return std::string(operation) + " failed (error " + std::to_string(error) + ")";
+    return std::string(operation) + " Failed (error " + std::to_string(error) + ")";
 }
 
 std::string MutexFileName(const std::wstring& name)
@@ -45,57 +45,57 @@ public:
 
     ~LinuxMutex() override
     {
-        release();
+        Release();
         if (descriptor_ != -1)
         {
             close(descriptor_);
         }
     }
 
-    Core::Result<bool> try_acquire() override
+    Core::Result<bool> TryAcquire() override
     {
         if (descriptor_ == -1)
         {
-            return Core::Result<bool>::failure("Mutex descriptor is invalid");
+            return Core::Result<bool>::Failure("Mutex descriptor is invalid");
         }
 
         if (owns_lock_)
         {
-            return Core::Result<bool>::success(true);
+            return Core::Result<bool>::Success(true);
         }
 
         if (flock(descriptor_, LOCK_EX | LOCK_NB) == 0)
         {
             owns_lock_ = true;
-            return Core::Result<bool>::success(true);
+            return Core::Result<bool>::Success(true);
         }
 
         const int error = errno;
         if (error == EWOULDBLOCK || error == EAGAIN)
         {
-            return Core::Result<bool>::success(false);
+            return Core::Result<bool>::Success(false);
         }
 
-        return Core::Result<bool>::failure(ErrorMessage("flock", error));
+        return Core::Result<bool>::Failure(ErrorMessage("flock", error));
     }
 
-    Core::Result<void> release() override
+    Core::Result<void> Release() override
     {
         if (descriptor_ == -1 || !owns_lock_)
         {
-            return Core::Result<void>::success();
+            return Core::Result<void>::Success();
         }
 
         if (flock(descriptor_, LOCK_UN) != 0)
         {
-            return Core::Result<void>::failure(ErrorMessage("flock", errno));
+            return Core::Result<void>::Failure(ErrorMessage("flock", errno));
         }
 
         owns_lock_ = false;
-        return Core::Result<void>::success();
+        return Core::Result<void>::Success();
     }
 
-    bool owns_lock() const noexcept override
+    bool OwnsLock() const noexcept override
     {
         return owns_lock_;
     }
@@ -107,27 +107,27 @@ private:
 
 }
 
-Core::Result<std::unique_ptr<Contracts::IMutex>> Linux::create_mutex(
+Core::Result<std::unique_ptr<Contracts::IMutex>> Linux::CreateMutex(
     const std::wstring& name)
 {
     if (name.empty())
     {
-        return Core::Result<std::unique_ptr<Contracts::IMutex>>::failure(
+        return Core::Result<std::unique_ptr<Contracts::IMutex>>::Failure(
             "Mutex name cannot be empty");
     }
 
-    const auto temporary = temp();
-    if (temporary.failed())
+    const auto temporary = Temp();
+    if (temporary.Failed())
     {
-        return Core::Result<std::unique_ptr<Contracts::IMutex>>::failure(temporary.message());
+        return Core::Result<std::unique_ptr<Contracts::IMutex>>::Failure(temporary.Message());
     }
 
-    const std::filesystem::path directory = temporary.value() / "Winux" / "Mutexes";
+    const std::filesystem::path directory = temporary.Value() / "Winux" / "Mutexes";
     std::error_code directory_error;
     std::filesystem::create_directories(directory, directory_error);
     if (directory_error)
     {
-        return Core::Result<std::unique_ptr<Contracts::IMutex>>::failure(
+        return Core::Result<std::unique_ptr<Contracts::IMutex>>::Failure(
             "Unable to create mutex directory: " + directory_error.message());
     }
 
@@ -135,11 +135,11 @@ Core::Result<std::unique_ptr<Contracts::IMutex>> Linux::create_mutex(
     const int descriptor = open(file.c_str(), O_RDWR | O_CREAT, 0600);
     if (descriptor == -1)
     {
-        return Core::Result<std::unique_ptr<Contracts::IMutex>>::failure(
+        return Core::Result<std::unique_ptr<Contracts::IMutex>>::Failure(
             ErrorMessage("open", errno));
     }
 
-    return Core::Result<std::unique_ptr<Contracts::IMutex>>::success(
+    return Core::Result<std::unique_ptr<Contracts::IMutex>>::Success(
         std::make_unique<LinuxMutex>(descriptor));
 }
 

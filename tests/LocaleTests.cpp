@@ -1,10 +1,10 @@
 #include <Winux/Winux.h>
 #include <Winux/Platform/General/Locale.h>
+#include "TestPlatform.h"
 
 #include <gtest/gtest.h>
 
 #include <chrono>
-#include <memory>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -20,38 +20,36 @@ class LocaleTests : public ::testing::Test
 protected:
     void SetUp() override
     {
-        platform = Winux::Platform::create();
-        ASSERT_NE(platform, nullptr);
-        locale = &platform->locale();
+        Winux::Testing::InitializePlatformOnce();
+        locale = &Winux::Get<Winux::Locale>();
     }
 
-    std::unique_ptr<Winux::Contracts::IPlatform> platform;
-    Winux::Contracts::ILocale* locale = nullptr;
+    Winux::Locale* locale = nullptr;
 };
 
 TEST_F(LocaleTests, ReturnsStructuredLocalTimeDateAndTimezone)
 {
     ASSERT_NE(locale, nullptr);
 
-    const auto time = locale->get_time();
-    ASSERT_TRUE(time.succeeded()) << time.message();
-    EXPECT_GE(time.value().hours().count(), 0);
-    EXPECT_LT(time.value().hours().count(), 24);
-    EXPECT_GE(time.value().minutes().count(), 0);
-    EXPECT_LT(time.value().minutes().count(), 60);
-    EXPECT_GE(time.value().seconds().count(), 0);
-    EXPECT_LT(time.value().seconds().count(), 60);
-    EXPECT_GE(time.value().subseconds().count(), 0);
-    EXPECT_LT(time.value().subseconds().count(), 1000);
+    const auto time = locale->GetTime();
+    ASSERT_TRUE(time.Succeeded()) << time.Message();
+    EXPECT_GE(time.Value().hours().count(), 0);
+    EXPECT_LT(time.Value().hours().count(), 24);
+    EXPECT_GE(time.Value().minutes().count(), 0);
+    EXPECT_LT(time.Value().minutes().count(), 60);
+    EXPECT_GE(time.Value().seconds().count(), 0);
+    EXPECT_LT(time.Value().seconds().count(), 60);
+    EXPECT_GE(time.Value().subseconds().count(), 0);
+    EXPECT_LT(time.Value().subseconds().count(), 1000);
 
-    const auto date = locale->get_date();
-    ASSERT_TRUE(date.succeeded()) << date.message();
-    EXPECT_TRUE(date.value().ok());
+    const auto date = locale->GetDate();
+    ASSERT_TRUE(date.Succeeded()) << date.Message();
+    EXPECT_TRUE(date.Value().ok());
 
-    const auto timezone = locale->get_timezone();
-    ASSERT_TRUE(timezone.succeeded()) << timezone.message();
-    EXPECT_GT(timezone.value(), -std::chrono::hours{24});
-    EXPECT_LT(timezone.value(), std::chrono::hours{24});
+    const auto timezone = locale->GetTimezone();
+    ASSERT_TRUE(timezone.Succeeded()) << timezone.Message();
+    EXPECT_GT(timezone.Value(), -std::chrono::hours{24});
+    EXPECT_LT(timezone.Value(), std::chrono::hours{24});
 
 #ifdef _WIN32
     TIME_ZONE_INFORMATION timezone_info{};
@@ -74,7 +72,7 @@ TEST_F(LocaleTests, ReturnsStructuredLocalTimeDateAndTimezone)
     ASSERT_NE(localtime_r(&timestamp, &local_time), nullptr);
     const auto expected_timezone = std::chrono::seconds{local_time.tm_gmtoff};
 #endif
-    EXPECT_EQ(timezone.value(), expected_timezone);
+    EXPECT_EQ(timezone.Value(), expected_timezone);
 }
 
 TEST(LocaleUtilityTests, ConvertsLocalTimeFieldsWithoutFormatting)
@@ -84,7 +82,7 @@ TEST(LocaleUtilityTests, ConvertsLocalTimeFieldsWithoutFormatting)
     local_time.tm_min = 58;
     local_time.tm_sec = 57;
 
-    const auto time = Winux::Platform::make_local_time(
+    const auto time = Winux::Platform::MakeLocalTime(
         local_time, std::chrono::milliseconds{321});
 
     EXPECT_EQ(time.hours(), std::chrono::hours{23});
@@ -100,7 +98,7 @@ TEST(LocaleUtilityTests, ConvertsLeapDayToCivilDateFields)
     local_time.tm_mon = 1;
     local_time.tm_mday = 29;
 
-    const auto date = Winux::Platform::make_local_date(local_time);
+    const auto date = Winux::Platform::MakeLocalDate(local_time);
 
     ASSERT_TRUE(date.ok());
     EXPECT_EQ(date.year(), std::chrono::year{2024});
@@ -127,18 +125,18 @@ TEST_F(LocaleTests, ExposesUnicodeConversionsThroughLocaleContract)
 
     const std::u32string scalars = U"A\U0001F642";
     const auto utf8 = locale->EncodeUtf8(scalars);
-    ASSERT_TRUE(utf8.succeeded()) << utf8.message();
+    ASSERT_TRUE(utf8.Succeeded()) << utf8.Message();
 
-    const auto utf16 = locale->ToUtf16(utf8.value());
-    ASSERT_TRUE(utf16.succeeded()) << utf16.message();
-    const auto decoded = locale->DecodeUtf16(utf16.value());
-    ASSERT_TRUE(decoded.succeeded()) << decoded.message();
-    EXPECT_EQ(decoded.value(), scalars);
-    EXPECT_TRUE(locale->ValidateUtf8(utf8.value()).succeeded());
+    const auto utf16 = locale->ToUtf16(utf8.Value());
+    ASSERT_TRUE(utf16.Succeeded()) << utf16.Message();
+    const auto decoded = locale->DecodeUtf16(utf16.Value());
+    ASSERT_TRUE(decoded.Succeeded()) << decoded.Message();
+    EXPECT_EQ(decoded.Value(), scalars);
+    EXPECT_TRUE(locale->ValidateUtf8(utf8.Value()).Succeeded());
 
     const auto malformed = locale->DecodeUtf8("\xC0\xAF");
-    EXPECT_TRUE(malformed.failed());
-    EXPECT_FALSE(malformed.message().empty());
+    EXPECT_TRUE(malformed.Failed());
+    EXPECT_FALSE(malformed.Message().empty());
 }
 
 }

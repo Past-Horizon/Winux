@@ -18,7 +18,13 @@ public:
         @summary
         Returns the username of the current user.
     */
-    virtual Core::Result<std::wstring> get_username() = 0;
+    virtual Core::Result<std::wstring> GetUsername() = 0;
+
+    /*
+        @summary
+        Returns the host name of the current system.
+    */
+    virtual Core::Result<std::wstring> GetHostName() = 0;
 };
 
 }

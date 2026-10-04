@@ -16,7 +16,7 @@ namespace {
 
 std::string ErrorMessage(const char* operation, const DWORD error)
 {
-    return std::string(operation) + " failed (error " + std::to_string(error) + ")";
+    return std::string(operation) + " Failed (error " + std::to_string(error) + ")";
 }
 
 std::wstring MutexFileName(const std::wstring& name)
@@ -43,23 +43,23 @@ public:
 
     ~WindowsMutex() override
     {
-        release();
+        Release();
         if (handle_ != INVALID_HANDLE_VALUE)
         {
             CloseHandle(handle_);
         }
     }
 
-    Core::Result<bool> try_acquire() override
+    Core::Result<bool> TryAcquire() override
     {
         if (handle_ == INVALID_HANDLE_VALUE)
         {
-            return Core::Result<bool>::failure("Mutex handle is invalid");
+            return Core::Result<bool>::Failure("Mutex handle is invalid");
         }
 
         if (owns_lock_)
         {
-            return Core::Result<bool>::success(true);
+            return Core::Result<bool>::Success(true);
         }
 
         OVERLAPPED overlapped{};
@@ -72,36 +72,36 @@ public:
                 &overlapped))
         {
             owns_lock_ = true;
-            return Core::Result<bool>::success(true);
+            return Core::Result<bool>::Success(true);
         }
 
         const DWORD error = GetLastError();
         if (error == ERROR_LOCK_VIOLATION)
         {
-            return Core::Result<bool>::success(false);
+            return Core::Result<bool>::Success(false);
         }
 
-        return Core::Result<bool>::failure(ErrorMessage("LockFileEx", error));
+        return Core::Result<bool>::Failure(ErrorMessage("LockFileEx", error));
     }
 
-    Core::Result<void> release() override
+    Core::Result<void> Release() override
     {
         if (handle_ == INVALID_HANDLE_VALUE || !owns_lock_)
         {
-            return Core::Result<void>::success();
+            return Core::Result<void>::Success();
         }
 
         OVERLAPPED overlapped{};
         if (!UnlockFileEx(handle_, 0, 1, 0, &overlapped))
         {
-            return Core::Result<void>::failure(ErrorMessage("UnlockFileEx", GetLastError()));
+            return Core::Result<void>::Failure(ErrorMessage("UnlockFileEx", GetLastError()));
         }
 
         owns_lock_ = false;
-        return Core::Result<void>::success();
+        return Core::Result<void>::Success();
     }
 
-    bool owns_lock() const noexcept override
+    bool OwnsLock() const noexcept override
     {
         return owns_lock_;
     }
@@ -113,27 +113,27 @@ private:
 
 }
 
-Core::Result<std::unique_ptr<Contracts::IMutex>> Win32::create_mutex(
+Core::Result<std::unique_ptr<Contracts::IMutex>> Win32::CreateMutex(
     const std::wstring& name)
 {
     if (name.empty())
     {
-        return Core::Result<std::unique_ptr<Contracts::IMutex>>::failure(
+        return Core::Result<std::unique_ptr<Contracts::IMutex>>::Failure(
             "Mutex name cannot be empty");
     }
 
-    const auto temporary = temp();
-    if (temporary.failed())
+    const auto temporary = Temp();
+    if (temporary.Failed())
     {
-        return Core::Result<std::unique_ptr<Contracts::IMutex>>::failure(temporary.message());
+        return Core::Result<std::unique_ptr<Contracts::IMutex>>::Failure(temporary.Message());
     }
 
-    const std::filesystem::path directory = temporary.value() / "Winux" / "Mutexes";
+    const std::filesystem::path directory = temporary.Value() / "Winux" / "Mutexes";
     std::error_code directory_error;
     std::filesystem::create_directories(directory, directory_error);
     if (directory_error)
     {
-        return Core::Result<std::unique_ptr<Contracts::IMutex>>::failure(
+        return Core::Result<std::unique_ptr<Contracts::IMutex>>::Failure(
             "Unable to create mutex directory: " + directory_error.message());
     }
 
@@ -148,11 +148,11 @@ Core::Result<std::unique_ptr<Contracts::IMutex>> Win32::create_mutex(
         nullptr);
     if (handle == INVALID_HANDLE_VALUE)
     {
-        return Core::Result<std::unique_ptr<Contracts::IMutex>>::failure(
+        return Core::Result<std::unique_ptr<Contracts::IMutex>>::Failure(
             ErrorMessage("CreateFileW", GetLastError()));
     }
 
-    return Core::Result<std::unique_ptr<Contracts::IMutex>>::success(
+    return Core::Result<std::unique_ptr<Contracts::IMutex>>::Success(
         std::make_unique<WindowsMutex>(handle));
 }
 

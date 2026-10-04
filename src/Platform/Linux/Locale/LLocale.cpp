@@ -1,6 +1,5 @@
 #include <Winux/Platform/Linux/Linux.h>
 #include <Winux/Platform/General/Locale.h>
-#include <Winux/Utils/Strings.h>
 
 #include <cerrno>
 #include <ctime>
@@ -9,75 +8,65 @@ namespace Winux::Platform::Linux {
 
 namespace {
 
-Core::Result<std::tm> get_local_time(std::chrono::system_clock::time_point now)
+Core::Result<std::tm> ReadLocalTime(std::chrono::system_clock::time_point now)
 {
     const auto whole_seconds = std::chrono::floor<std::chrono::seconds>(now);
     const auto timestamp = std::chrono::system_clock::to_time_t(whole_seconds);
     std::tm local_time{};
     if (localtime_r(&timestamp, &local_time) == nullptr)
     {
-        return Core::Result<std::tm>::failure(
+        return Core::Result<std::tm>::Failure(
             "Unable to determine local time (error " + std::to_string(errno) + ")");
     }
 
-    return Core::Result<std::tm>::success(local_time);
+    return Core::Result<std::tm>::Success(local_time);
 }
 
 }
 
-Contracts::ILocale& Linux::locale()
+Contracts::ILocale& Linux::GetLocale()
 {
     return *this;
 }
 
-Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>> Linux::get_time()
+Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>> Linux::GetTime()
 {
     const auto now = std::chrono::system_clock::now();
-    const auto local_time = get_local_time(now);
-    if (local_time.failed())
+    const auto local_time = ReadLocalTime(now);
+    if (local_time.Failed())
     {
-        return Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>>::failure(
-            local_time.message());
+        return Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>>::Failure(
+            local_time.Message());
     }
 
     const auto subseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
         now - std::chrono::floor<std::chrono::seconds>(now));
-    return Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>>::success(
-        make_local_time(local_time.value(), subseconds));
+    return Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>>::Success(
+        MakeLocalTime(local_time.Value(), subseconds));
 }
 
-Core::Result<std::chrono::year_month_day> Linux::get_date()
+Core::Result<std::chrono::year_month_day> Linux::GetDate()
 {
-    const auto local_time = get_local_time(std::chrono::system_clock::now());
-    if (local_time.failed())
+    const auto local_time = ReadLocalTime(std::chrono::system_clock::now());
+    if (local_time.Failed())
     {
-        return Core::Result<std::chrono::year_month_day>::failure(local_time.message());
+        return Core::Result<std::chrono::year_month_day>::Failure(local_time.Message());
     }
 
-    return Core::Result<std::chrono::year_month_day>::success(
-        make_local_date(local_time.value()));
+    return Core::Result<std::chrono::year_month_day>::Success(
+        MakeLocalDate(local_time.Value()));
 }
 
-Core::Result<std::chrono::seconds> Linux::get_timezone()
+Core::Result<std::chrono::seconds> Linux::GetTimezone()
 {
-    const auto local_time = get_local_time(std::chrono::system_clock::now());
-    if (local_time.failed())
+    const auto local_time = ReadLocalTime(std::chrono::system_clock::now());
+    if (local_time.Failed())
     {
-        return Core::Result<std::chrono::seconds>::failure(local_time.message());
+        return Core::Result<std::chrono::seconds>::Failure(local_time.Message());
     }
 
-    return Core::Result<std::chrono::seconds>::success(
-        std::chrono::seconds{local_time.value().tm_gmtoff});
-}
-
-std::wstring Linux::Utf8ToWide(const std::string& input)
-{
-    return String::Utf8ToWide(input);
-}
-
-std::string Linux::WideToUtf8(const std::wstring& input)
-{
-    return String::WideToUtf8(input);
+    return Core::Result<std::chrono::seconds>::Success(
+        std::chrono::seconds{local_time.Value().tm_gmtoff});
 }
 
 }

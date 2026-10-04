@@ -12,100 +12,67 @@ public:
         @summary
         Returns the process interface provided by the Linux platform.
     */
-    Contracts::IProcess& process() override;
+    Contracts::IProcess& GetProcess() override;
 
     /*
         @summary
         Returns the environment interface provided by the Linux platform.
     */
-    Contracts::IEnvironment& environment() override;
+    Contracts::IEnvironment& GetEnvironment() override;
 
     /*
         @summary
         Returns the current user's username on Linux or Android.
     */
-    Contracts::ISystem& system() override;
+    Contracts::ISystem& GetSystem() override;
 
     /*
         @summary
         Returns the locale interface provided by Linux.
     */
-    Contracts::ILocale& locale() override;
+    Contracts::ILocale& GetLocale() override;
 
     /*
         @summary
         Returns the local wall-clock time in 24-hour form with millisecond precision.
     */
-    Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>> get_time() override;
+    Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>> GetTime() override;
 
     /*
         @summary
         Returns the current local civil date as year, month, and day fields.
     */
-    Core::Result<std::chrono::year_month_day> get_date() override;
+    Core::Result<std::chrono::year_month_day> GetDate() override;
 
     /*
         @summary
         Returns the current local UTC offset in seconds, positive east of UTC.
     */
-    Core::Result<std::chrono::seconds> get_timezone() override;
+    Core::Result<std::chrono::seconds> GetTimezone() override;
 
-    /*
-        @summary
-        Converts valid UTF-8 text to a wide string. Invalid input returns an empty string.
-    */
-    std::wstring Utf8ToWide(const std::string& input) override;
+    Core::Result<std::wstring> GetUsername() override;
 
-    /*
-        @summary
-        Converts a wide string to UTF-8. Invalid input returns an empty string.
-    */
-    std::string WideToUtf8(const std::wstring& input) override;
-
-    Core::Result<std::wstring> get_username() override;
+    Core::Result<std::wstring> GetHostName() override;
 
     /*
         @summary
         Returns the file-system interface provided by the Linux platform.
     */
-    Contracts::IFileSystem& file_system() override;
+    Contracts::IFileSystem& GetFileSystem() override;
 
     /*
         @summary
         Returns the terminal interface provided by the Linux platform.
     */
-    Contracts::ITerminal& terminal() override;
+    Contracts::ITerminal& GetTerminal() override;
 
-    Contracts::ICrypto& crypto() override;
-
-    Core::Result<void> fill_random(std::span<std::byte> output) override;
-
-    Core::Result<Contracts::ICrypto::Sha256Digest> sha256(
-        std::span<const std::byte> input) override;
-
-    Core::Result<Contracts::ICrypto::Sha256Digest> hmac_sha256(
-        std::span<const std::byte> key,
-        std::span<const std::byte> input) override;
-
-    Core::Result<void> hkdf_sha256(
-        std::span<const std::byte> input_key_material,
-        std::span<const std::byte> salt,
-        std::span<const std::byte> info,
-        std::span<std::byte> output) override;
+    Contracts::ICrypto& GetCrypto() override { return *this; }
 
     /*
         @summary
         Executes a command line and captures the produced text output.
     */
-    Core::Result<std::string> execute_command(const std::wstring& command_line) override;
-
-    /*
-        @summary
-        Creates a reusable command object backed by the terminal.
-    */
-    std::shared_ptr<Contracts::ITerminal::ICommand> create_command(
-        ExecuteHandler execute_handler,
-        CanExecuteHandler can_execute_handler = {}) override;
+    Core::Result<std::string> ExecuteCommand(const std::wstring& command_line) override;
 
     /*
         @summary
@@ -114,39 +81,33 @@ public:
         @param name
         Unique mutex name.
     */
-    Core::Result<std::unique_ptr<Contracts::IMutex>> create_mutex(
+    Core::Result<std::unique_ptr<Contracts::IMutex>> CreateMutex(
         const std::wstring& name) override;
 
     /*
         @summary
         Reports the set of process features supported by this implementation.
     */
-    Contracts::IProcess::ProcessOptions supported_features() const override;
+    Contracts::CapabilitySet SupportedFeatures() const override;
 
     /*
         @summary
         Returns the current user's home directory on Linux.
     */
-    Core::Result<std::filesystem::path> home() override;
+    Core::Result<std::filesystem::path> Home() override;
 
     /*
         @summary
         Returns the current user's desktop directory on Linux.
     */
-    Core::Result<std::filesystem::path> desktop() override;
+    Core::Result<std::filesystem::path> Desktop() override;
 
     /*
         @summary
         Returns the application data directory on Linux.
     */
-    Core::Result<std::filesystem::path> app_data_impl(
-        Contracts::AppDataScope scope) override;
-
-    /*
-        @summary
-        Returns the temporary directory used by Linux.
-    */
-    Core::Result<std::filesystem::path> temp() override;
+    Core::Result<std::filesystem::path> AppData(
+        Contracts::AppDataScope scope = Contracts::AppDataScope::Local) override;
 
     /*
         @summary
@@ -155,7 +116,7 @@ public:
         @param name
         Environment variable name.
     */
-    Core::Result<std::wstring> get_env(const std::wstring& name) override;
+    Core::Result<std::wstring> GetEnv(const std::wstring& name) override;
 
     /*
         @summary
@@ -167,7 +128,7 @@ public:
         @param value
         Desired value to store.
     */
-    Core::Result<void> set_env(
+    Core::Result<void> SetEnv(
         const std::wstring& name,
         const std::wstring& value) override;
 
@@ -178,26 +139,9 @@ public:
         @param name
         Environment variable name.
     */
-    Core::Result<void> unset_env(const std::wstring& name) override;
+    Core::Result<void> UnsetEnv(const std::wstring& name) override;
 
-    /*
-        @summary
-        Reads a file using the supplied stream mode.
-    */
-    Core::Result<std::string> read_file(
-        const std::filesystem::path& file,
-        std::ios::openmode mode) override;
-
-    /*
-        @summary
-        Writes text to a file using the supplied stream mode.
-    */
-    Core::Result<void> write_file(
-        const std::filesystem::path& file,
-        std::string_view contents,
-        std::ios::openmode mode) override;
-
-    Core::Result<void> move_file(
+    Core::Result<void> MoveFile(
         const std::filesystem::path& source,
         const std::filesystem::path& destination) override;
 
@@ -208,7 +152,7 @@ public:
         @param name
         Executable name to search for.
     */
-    Core::Result<std::vector<std::uint32_t>> find_processes(const std::wstring& name) override;
+    Core::Result<std::vector<std::uint32_t>> FindProcesses(const std::wstring& name) override;
 
     /*
         @summary
@@ -217,7 +161,7 @@ public:
         @param name
         Executable name to search for.
     */
-    Core::Result<std::optional<std::uint32_t>> find_process(const std::wstring& name) override;
+    Core::Result<std::optional<std::uint32_t>> FindProcess(const std::wstring& name) override;
 
     /*
         @summary
@@ -226,9 +170,9 @@ public:
         @param process_id
         Identifier of the process.
     */
-    Core::Result<std::filesystem::path> find_location(std::uint32_t process_id) override;
+    Core::Result<std::filesystem::path> FindLocation(std::uint32_t process_id) override;
 
-    Core::Result<std::filesystem::path> get_executable_directory(
+    Core::Result<std::filesystem::path> GetExecutableDirectory(
         std::optional<std::uint32_t> process_id = std::nullopt) override;
 
     /*
@@ -238,7 +182,7 @@ public:
         @param process_id
         Identifier of the process.
     */
-    Core::Result<bool> is_running(std::uint32_t process_id) override;
+    Core::Result<bool> IsRunning(std::uint32_t process_id) override;
 
     /*
         @summary
@@ -250,9 +194,9 @@ public:
         @param requested_features
         Flags describing how the process should start.
     */
-    Core::Result<std::uint32_t> create_process_impl(
+    Core::Result<std::uint32_t> CreateProcess(
         const std::wstring& application,
-        Contracts::IProcess::ProcessOptions requested_features) override;
+        const Contracts::CapabilitySet& requested_features = {}) override;
 
     /*
         @summary
@@ -261,7 +205,7 @@ public:
         @param process_id
         Identifier of the process to stop.
     */
-    Core::Result<void> terminate_process(std::uint32_t process_id) override;
+    Core::Result<void> TerminateProcess(std::uint32_t process_id) override;
 
     /*
         @summary
@@ -270,7 +214,7 @@ public:
         @param process_id
         Identifier of the process to stop.
     */
-    Core::Result<void> force_terminate_process(std::uint32_t process_id) override;
+    Core::Result<void> ForceTerminateProcess(std::uint32_t process_id) override;
 };
 
 }

@@ -1,10 +1,10 @@
 #pragma once
 
 #include <Winux/Core/Results.h>
-#include <Winux/Utils/Strings.h>
 
 #include <chrono>
 #include <string>
+#include <string_view>
 
 namespace Winux::Contracts {
 
@@ -20,19 +20,19 @@ public:
         @summary
         Returns the current local wall-clock time with millisecond precision.
     */
-    virtual Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>> get_time() = 0;
+    virtual Core::Result<std::chrono::hh_mm_ss<std::chrono::milliseconds>> GetTime() = 0;
 
     /*
         @summary
         Returns the current local civil date.
     */
-    virtual Core::Result<std::chrono::year_month_day> get_date() = 0;
+    virtual Core::Result<std::chrono::year_month_day> GetDate() = 0;
 
     /*
         @summary
         Returns the current local UTC offset, positive east of UTC.
     */
-    virtual Core::Result<std::chrono::seconds> get_timezone() = 0;
+    virtual Core::Result<std::chrono::seconds> GetTimezone() = 0;
 
     /*
         @summary
@@ -44,10 +44,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::string> ToUtf8(std::u16string_view value)
-    {
-        return ::String::ToUtf8(value);
-    }
+    virtual Core::Result<std::string> ToUtf8(std::u16string_view value);
 
     /*
         @summary
@@ -59,10 +56,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::string> ToUtf8(std::u32string_view value)
-    {
-        return ::String::ToUtf8(value);
-    }
+    virtual Core::Result<std::string> ToUtf8(std::u32string_view value);
 
     /*
         @summary
@@ -74,10 +68,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::string> ToUtf8(std::wstring_view value)
-    {
-        return ::String::ToUtf8(value);
-    }
+    virtual Core::Result<std::string> ToUtf8(std::wstring_view value);
 
     /*
         @summary
@@ -89,10 +80,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::u16string> ToUtf16(std::string_view value)
-    {
-        return ::String::ToUtf16(value);
-    }
+    virtual Core::Result<std::u16string> ToUtf16(std::string_view value);
 
     /*
         @summary
@@ -104,10 +92,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::u16string> ToUtf16(std::u32string_view value)
-    {
-        return ::String::ToUtf16(value);
-    }
+    virtual Core::Result<std::u16string> ToUtf16(std::u32string_view value);
 
     /*
         @summary
@@ -119,10 +104,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::u16string> ToUtf16(std::wstring_view value)
-    {
-        return ::String::ToUtf16(value);
-    }
+    virtual Core::Result<std::u16string> ToUtf16(std::wstring_view value);
 
     /*
         @summary
@@ -134,10 +116,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::u32string> ToUtf32(std::string_view value)
-    {
-        return ::String::ToUtf32(value);
-    }
+    virtual Core::Result<std::u32string> ToUtf32(std::string_view value);
 
     /*
         @summary
@@ -149,10 +128,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::u32string> ToUtf32(std::u16string_view value)
-    {
-        return ::String::ToUtf32(value);
-    }
+    virtual Core::Result<std::u32string> ToUtf32(std::u16string_view value);
 
     /*
         @summary
@@ -164,10 +140,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::u32string> ToUtf32(std::wstring_view value)
-    {
-        return ::String::ToUtf32(value);
-    }
+    virtual Core::Result<std::u32string> ToUtf32(std::wstring_view value);
 
     /*
         @summary
@@ -179,10 +152,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::wstring> FromUtf8(std::string_view value)
-    {
-        return ::String::FromUtf8(value);
-    }
+    virtual Core::Result<std::wstring> FromUtf8(std::string_view value);
 
     /*
         @summary
@@ -194,10 +164,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::wstring> FromUtf16(std::u16string_view value)
-    {
-        return ::String::FromUtf16(value);
-    }
+    virtual Core::Result<std::wstring> FromUtf16(std::u16string_view value);
 
     /*
         @summary
@@ -209,10 +176,7 @@ public:
         @returns
         The converted text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::wstring> FromUtf32(std::u32string_view value)
-    {
-        return ::String::FromUtf32(value);
-    }
+    virtual Core::Result<std::wstring> FromUtf32(std::u32string_view value);
 
     /*
         @summary
@@ -224,10 +188,7 @@ public:
         @returns
         The encoded text, or a failed result if a value is invalid.
     */
-    virtual Core::Result<std::string> EncodeUtf8(std::u32string_view value)
-    {
-        return ::String::EncodeUtf8(value);
-    }
+    virtual Core::Result<std::string> EncodeUtf8(std::u32string_view value);
 
     /*
         @summary
@@ -239,10 +200,7 @@ public:
         @returns
         The decoded text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::u32string> DecodeUtf8(std::string_view value)
-    {
-        return ::String::DecodeUtf8(value);
-    }
+    virtual Core::Result<std::u32string> DecodeUtf8(std::string_view value);
 
     /*
         @summary
@@ -254,10 +212,7 @@ public:
         @returns
         A successful result for valid input, or a failed result otherwise.
     */
-    virtual Core::Result<void> ValidateUtf8(std::string_view value)
-    {
-        return ::String::ValidateUtf8(value);
-    }
+    virtual Core::Result<void> ValidateUtf8(std::string_view value);
 
     /*
         @summary
@@ -269,10 +224,7 @@ public:
         @returns
         The encoded text, or a failed result if a value is invalid.
     */
-    virtual Core::Result<std::u16string> EncodeUtf16(std::u32string_view value)
-    {
-        return ::String::EncodeUtf16(value);
-    }
+    virtual Core::Result<std::u16string> EncodeUtf16(std::u32string_view value);
 
     /*
         @summary
@@ -284,10 +236,7 @@ public:
         @returns
         The decoded text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::u32string> DecodeUtf16(std::u16string_view value)
-    {
-        return ::String::DecodeUtf16(value);
-    }
+    virtual Core::Result<std::u32string> DecodeUtf16(std::u16string_view value);
 
     /*
         @summary
@@ -299,10 +248,7 @@ public:
         @returns
         A successful result for valid input, or a failed result otherwise.
     */
-    virtual Core::Result<void> ValidateUtf16(std::u16string_view value)
-    {
-        return ::String::ValidateUtf16(value);
-    }
+    virtual Core::Result<void> ValidateUtf16(std::u16string_view value);
 
     /*
         @summary
@@ -314,10 +260,7 @@ public:
         @returns
         The encoded text, or a failed result if a value is invalid.
     */
-    virtual Core::Result<std::u32string> EncodeUtf32(std::u32string_view value)
-    {
-        return ::String::EncodeUtf32(value);
-    }
+    virtual Core::Result<std::u32string> EncodeUtf32(std::u32string_view value);
 
     /*
         @summary
@@ -329,10 +272,7 @@ public:
         @returns
         The decoded text, or a failed result if the input is invalid.
     */
-    virtual Core::Result<std::u32string> DecodeUtf32(std::u32string_view value)
-    {
-        return ::String::DecodeUtf32(value);
-    }
+    virtual Core::Result<std::u32string> DecodeUtf32(std::u32string_view value);
 
     /*
         @summary
@@ -344,22 +284,19 @@ public:
         @returns
         A successful result for valid input, or a failed result otherwise.
     */
-    virtual Core::Result<void> ValidateUtf32(std::u32string_view value)
-    {
-        return ::String::ValidateUtf32(value);
-    }
+    virtual Core::Result<void> ValidateUtf32(std::u32string_view value);
 
     /*
         @summary
         Converts valid UTF-8 text to a wide string. Invalid input returns an empty string.
     */
-    virtual std::wstring Utf8ToWide(const std::string& input) = 0;
+    virtual std::wstring Utf8ToWide(const std::string& input);
 
     /*
         @summary
         Converts a wide string to UTF-8. Invalid input returns an empty string.
     */
-    virtual std::string WideToUtf8(const std::wstring& input) = 0;
+    virtual std::string WideToUtf8(const std::wstring& input);
 };
 
 }

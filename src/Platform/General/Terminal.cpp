@@ -13,7 +13,7 @@
 
 namespace Winux::Platform {
 
-std::string read_pipe(std::FILE* pipe)
+std::string ReadPipe(std::FILE* pipe)
 {
     std::array<char, 4096> buffer{};
     std::string output;
@@ -45,22 +45,22 @@ public:
     {
     }
 
-    bool can_execute(const std::any& parameter = {}) const override
+    bool CanExecute(const std::any& parameter = {}) const override
     {
         return can_execute_handler_ ? can_execute_handler_(parameter) : true;
     }
 
-    Core::Result<void> execute(const std::any& parameter = {}) override
+    Core::Result<void> Execute(const std::any& parameter = {}) override
     {
         if (!execute_handler_)
         {
-            return Core::Result<void>::failure("Unable to execute command: no handler was registered");
+            return Core::Result<void>::Failure("Unable to execute command: no handler was registered");
         }
 
         return execute_handler_(parameter);
     }
 
-    void add_changed(const std::function<void()>& handler) override
+    void AddChanged(const std::function<void()>& handler) override
     {
         if (handler)
         {
@@ -68,7 +68,7 @@ public:
         }
     }
 
-    void remove_changed(const std::function<void()>& handler) override
+    void RemoveChanged(const std::function<void()>& handler) override
     {
         if (!handler)
         {
@@ -89,7 +89,7 @@ public:
         }
     }
 
-    void raise_changed() override
+    void RaiseChanged() override
     {
         for (const auto& handler : can_execute_changed_handlers_)
         {
@@ -108,11 +108,24 @@ private:
 
 }
 
-std::shared_ptr<Contracts::ITerminal::ICommand> make_terminal_command(
+std::shared_ptr<Contracts::ITerminal::ICommand> MakeTerminalCommand(
     Contracts::ITerminal::ExecuteHandler execute_handler,
     Contracts::ITerminal::CanExecuteHandler can_execute_handler)
 {
     return std::make_shared<TerminalCommand>(std::move(execute_handler), std::move(can_execute_handler));
+}
+
+}
+
+namespace Winux::Contracts {
+
+std::shared_ptr<ITerminal::ICommand> ITerminal::CreateCommand(
+    ExecuteHandler execute_handler,
+    CanExecuteHandler can_execute_handler)
+{
+    return Platform::MakeTerminalCommand(
+        std::move(execute_handler),
+        std::move(can_execute_handler));
 }
 
 }

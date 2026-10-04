@@ -36,19 +36,19 @@ bool MatchesProcessName(const std::filesystem::path& process_directory, const st
 
 }
 
-Contracts::IProcess& Linux::process()
+Contracts::IProcess& Linux::GetProcess()
 {
     return *this;
 }
 
-Contracts::IProcess::ProcessOptions Linux::supported_features() const
+Contracts::CapabilitySet Linux::SupportedFeatures() const
 {
-    Contracts::IProcess::ProcessOptions features;
-    features.add(Contracts::IProcess::ProcessOption::Detached);
+    Contracts::CapabilitySet features;
+    features.Add<Contracts::IProcess::Detached>();
     return features;
 }
 
-Core::Result<std::vector<std::uint32_t>> Linux::find_processes(const std::wstring& name)
+Core::Result<std::vector<std::uint32_t>> Linux::FindProcesses(const std::wstring& name)
 {
     const std::string process_name = String::ToString(name);
     std::vector<std::uint32_t> process_ids;
@@ -70,23 +70,23 @@ Core::Result<std::vector<std::uint32_t>> Linux::find_processes(const std::wstrin
     Logger::Log(
         Logger::Level::Info,
         process_ids.empty() ? "Was unable to find process" : "Found matching processes");
-    return Core::Result<std::vector<std::uint32_t>>::success(std::move(process_ids));
+    return Core::Result<std::vector<std::uint32_t>>::Success(std::move(process_ids));
 }
 
-Core::Result<std::optional<std::uint32_t>> Linux::find_process(const std::wstring& name)
+Core::Result<std::optional<std::uint32_t>> Linux::FindProcess(const std::wstring& name)
 {
-    const auto process_ids = find_processes(name);
-    if (process_ids.failed())
+    const auto process_ids = FindProcesses(name);
+    if (process_ids.Failed())
     {
-        return Core::Result<std::optional<std::uint32_t>>::failure(process_ids.message());
+        return Core::Result<std::optional<std::uint32_t>>::Failure(process_ids.Message());
     }
 
-    const auto& ids = process_ids.value();
-    return Core::Result<std::optional<std::uint32_t>>::success(
+    const auto& ids = process_ids.Value();
+    return Core::Result<std::optional<std::uint32_t>>::Success(
         ids.empty() ? std::nullopt : std::optional<std::uint32_t>(ids.front()));
 }
 
-Core::Result<std::filesystem::path> Linux::find_location(const std::uint32_t process_id)
+Core::Result<std::filesystem::path> Linux::FindLocation(const std::uint32_t process_id)
 {
     std::error_code error;
     const auto location = std::filesystem::read_symlink(
@@ -95,14 +95,14 @@ Core::Result<std::filesystem::path> Linux::find_location(const std::uint32_t pro
 
     if (error)
     {
-        return Core::Result<std::filesystem::path>::failure(
+        return Core::Result<std::filesystem::path>::Failure(
             "Unable to find process location (error " + error.message() + ")");
     }
 
-    return Core::Result<std::filesystem::path>::success(location);
+    return Core::Result<std::filesystem::path>::Success(location);
 }
 
-Core::Result<std::filesystem::path> Linux::get_executable_directory(
+Core::Result<std::filesystem::path> Linux::GetExecutableDirectory(
     const std::optional<std::uint32_t> process_id)
 {
     const std::filesystem::path executable = std::filesystem::path("/proc") /
@@ -112,41 +112,41 @@ Core::Result<std::filesystem::path> Linux::get_executable_directory(
     const auto location = std::filesystem::read_symlink(executable, error);
     if (error)
     {
-        return Core::Result<std::filesystem::path>::failure(
+        return Core::Result<std::filesystem::path>::Failure(
             "Unable to find executable directory (error " + error.message() + ")");
     }
 
-    return Core::Result<std::filesystem::path>::success(location.parent_path());
+    return Core::Result<std::filesystem::path>::Success(location.parent_path());
 }
 
-Core::Result<bool> Linux::is_running(const std::uint32_t process_id)
+Core::Result<bool> Linux::IsRunning(const std::uint32_t process_id)
 {
     if (process_id == 0)
     {
-        return Core::Result<bool>::failure("Unable to check process: invalid process ID");
+        return Core::Result<bool>::Failure("Unable to check process: invalid process ID");
     }
 
     if (kill(static_cast<pid_t>(process_id), 0) == 0 || errno == EPERM)
     {
-        return Core::Result<bool>::success(true);
+        return Core::Result<bool>::Success(true);
     }
 
     if (errno == ESRCH)
     {
-        return Core::Result<bool>::success(false);
+        return Core::Result<bool>::Success(false);
     }
 
-    return Core::Result<bool>::failure(
-        "Unable to check process (error " + std::to_string(errno) + ")");
+    return Core::Result<bool>::Failure(
+        "Unable to check GetProcess (error " + std::to_string(errno) + ")");
 }
 
-Core::Result<std::uint32_t> Linux::create_process_impl(
+Core::Result<std::uint32_t> Linux::CreateProcess(
     const std::wstring& application,
-    const Contracts::IProcess::ProcessOptions requested_features)
+    const Contracts::CapabilitySet& requested_features)
 {
-    if (!supported_features().contains_all(requested_features))
+    if (!SupportedFeatures().ContainsAll(requested_features))
     {
-        return Core::Result<std::uint32_t>::failure(
+        return Core::Result<std::uint32_t>::Failure(
             "Unable to create process: requested features are unsupported");
     }
 
@@ -158,15 +158,15 @@ Core::Result<std::uint32_t> Linux::create_process_impl(
     if (arguments.empty())
     {
         Logger::Log(Logger::Level::Error, "Unable to create process: empty application");
-        return Core::Result<std::uint32_t>::failure("Unable to create process: empty application");
+        return Core::Result<std::uint32_t>::Failure("Unable to create process: empty application");
     }
 
     int execution_pipe[2]{};
     if (pipe(execution_pipe) != 0)
     {
-        Logger::Log(Logger::Level::Error, "Unable to create process (error ", errno, ")");
-        return Core::Result<std::uint32_t>::failure(
-            "Unable to create process (error " + std::to_string(errno) + ")");
+        Logger::Log(Logger::Level::Error, "Unable to create GetProcess (error ", errno, ")");
+        return Core::Result<std::uint32_t>::Failure(
+            "Unable to create GetProcess (error " + std::to_string(errno) + ")");
     }
 
     const int flags = fcntl(execution_pipe[1], F_GETFD);
@@ -175,8 +175,8 @@ Core::Result<std::uint32_t> Linux::create_process_impl(
         const int error = errno;
         close(execution_pipe[0]);
         close(execution_pipe[1]);
-        return Core::Result<std::uint32_t>::failure(
-            "Unable to create process (error " + std::to_string(error) + ")");
+        return Core::Result<std::uint32_t>::Failure(
+            "Unable to create GetProcess (error " + std::to_string(error) + ")");
     }
 
     const pid_t process_id = fork();
@@ -186,16 +186,16 @@ Core::Result<std::uint32_t> Linux::create_process_impl(
         const int error = errno;
         close(execution_pipe[0]);
         close(execution_pipe[1]);
-        Logger::Log(Logger::Level::Error, "Unable to create process (error ", error, ")");
-        return Core::Result<std::uint32_t>::failure(
-            "Unable to create process (error " + std::to_string(error) + ")");
+        Logger::Log(Logger::Level::Error, "Unable to create GetProcess (error ", error, ")");
+        return Core::Result<std::uint32_t>::Failure(
+            "Unable to create GetProcess (error " + std::to_string(error) + ")");
     }
 
     if (process_id == 0)
     {
         close(execution_pipe[0]);
 
-        if (requested_features.contains(Contracts::IProcess::ProcessOption::Detached) &&
+        if (requested_features.Has<Contracts::IProcess::Detached>() &&
             setsid() == -1)
         {
             _exit(EXIT_FAILURE);
@@ -230,63 +230,63 @@ Core::Result<std::uint32_t> Linux::create_process_impl(
     if (bytes_read > 0)
     {
         (void)waitpid(process_id, nullptr, 0);
-        Logger::Log(Logger::Level::Error, "Unable to create process (error ", execution_error, ")");
-        return Core::Result<std::uint32_t>::failure(
-            "Unable to create process (error " + std::to_string(execution_error) + ")");
+        Logger::Log(Logger::Level::Error, "Unable to create GetProcess (error ", execution_error, ")");
+        return Core::Result<std::uint32_t>::Failure(
+            "Unable to create GetProcess (error " + std::to_string(execution_error) + ")");
     }
 
     Logger::Log(Logger::Level::Info, "Created process with ID ", process_id);
-    return Core::Result<std::uint32_t>::success(static_cast<std::uint32_t>(process_id));
+    return Core::Result<std::uint32_t>::Success(static_cast<std::uint32_t>(process_id));
 }
 
-Core::Result<void> Linux::terminate_process(const std::uint32_t process_id)
+Core::Result<void> Linux::TerminateProcess(const std::uint32_t process_id)
 {
     if (process_id == 0)
     {
-        return Core::Result<void>::failure("Unable to terminate process: invalid process ID");
+        return Core::Result<void>::Failure("Unable to terminate process: invalid process ID");
     }
 
     if (kill(static_cast<pid_t>(process_id), SIGTERM) != 0)
     {
-        Logger::Log(Logger::Level::Error, "Unable to terminate process (error ", errno, ")");
-        return Core::Result<void>::failure(
-            "Unable to terminate process (error " + std::to_string(errno) + ")");
+        Logger::Log(Logger::Level::Error, "Unable to terminate GetProcess (error ", errno, ")");
+        return Core::Result<void>::Failure(
+            "Unable to terminate GetProcess (error " + std::to_string(errno) + ")");
     }
 
     int status = 0;
     if (waitpid(static_cast<pid_t>(process_id), &status, 0) == -1 && errno != ECHILD)
     {
         Logger::Log(Logger::Level::Error, "Unable to wait for process termination (error ", errno, ")");
-        return Core::Result<void>::failure(
+        return Core::Result<void>::Failure(
             "Unable to wait for process termination (error " + std::to_string(errno) + ")");
     }
 
-    return Core::Result<void>::success();
+    return Core::Result<void>::Success();
 }
 
-Core::Result<void> Linux::force_terminate_process(const std::uint32_t process_id)
+Core::Result<void> Linux::ForceTerminateProcess(const std::uint32_t process_id)
 {
     if (process_id == 0)
     {
-        return Core::Result<void>::failure("Unable to force terminate process: invalid process ID");
+        return Core::Result<void>::Failure("Unable to force terminate process: invalid process ID");
     }
 
     if (kill(static_cast<pid_t>(process_id), SIGKILL) != 0)
     {
-        Logger::Log(Logger::Level::Error, "Unable to force terminate process (error ", errno, ")");
-        return Core::Result<void>::failure(
-            "Unable to force terminate process (error " + std::to_string(errno) + ")");
+        Logger::Log(Logger::Level::Error, "Unable to force terminate GetProcess (error ", errno, ")");
+        return Core::Result<void>::Failure(
+            "Unable to force terminate GetProcess (error " + std::to_string(errno) + ")");
     }
 
     int status = 0;
     if (waitpid(static_cast<pid_t>(process_id), &status, 0) == -1 && errno != ECHILD)
     {
-        Logger::Log(Logger::Level::Error, "Unable to wait for force terminated process (error ", errno, ")");
-        return Core::Result<void>::failure(
-            "Unable to wait for force terminated process (error " + std::to_string(errno) + ")");
+        Logger::Log(Logger::Level::Error, "Unable to wait for force terminated GetProcess (error ", errno, ")");
+        return Core::Result<void>::Failure(
+            "Unable to wait for force terminated GetProcess (error " + std::to_string(errno) + ")");
     }
 
-    return Core::Result<void>::success();
+    return Core::Result<void>::Success();
 }
 
 }

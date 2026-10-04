@@ -1,4 +1,5 @@
 #include <Winux/Winux.h>
+#include "TestPlatform.h"
 
 #include <gtest/gtest.h>
 
@@ -12,32 +13,32 @@ class MutexTests : public ::testing::Test
 protected:
     void SetUp() override
     {
-        platform = Winux::Platform::create();
-        ASSERT_NE(platform, nullptr);
+        Winux::Testing::InitializePlatformOnce();
+        platform = &Winux::Get<Winux::PlatformContext>();
     }
 
-    std::unique_ptr<Winux::Contracts::IPlatform> platform;
+    Winux::PlatformContext* platform = nullptr;
 };
 
-std::unique_ptr<Winux::Contracts::IMutex> CreateMutex(
-    Winux::Contracts::IPlatform& platform,
+std::unique_ptr<Winux::Mutex> CreateMutex(
+    Winux::PlatformContext& platform,
     const std::wstring& name)
 {
-    auto result = platform.create_mutex(name);
-    EXPECT_TRUE(result.succeeded()) << result.message();
-    if (result.failed())
+    auto result = platform.CreateMutex(name);
+    EXPECT_TRUE(result.Succeeded()) << result.Message();
+    if (result.Failed())
     {
         return nullptr;
     }
 
-    return std::move(result).value();
+    return std::move(result).Value();
 }
 
 TEST_F(MutexTests, EmptyNamesAreRejected)
 {
-    const auto result = platform->create_mutex(L"");
-    EXPECT_TRUE(result.failed());
-    EXPECT_FALSE(result.message().empty());
+    const auto result = platform->CreateMutex(L"");
+    EXPECT_TRUE(result.Failed());
+    EXPECT_FALSE(result.Message().empty());
 }
 
 TEST_F(MutexTests, SameNameAllowsOnlyOneOwner)
@@ -47,20 +48,20 @@ TEST_F(MutexTests, SameNameAllowsOnlyOneOwner)
     ASSERT_NE(first, nullptr);
     ASSERT_NE(second, nullptr);
 
-    const auto first_acquired = first->try_acquire();
-    ASSERT_TRUE(first_acquired.succeeded()) << first_acquired.message();
-    EXPECT_TRUE(first_acquired.value());
-    EXPECT_TRUE(first->owns_lock());
+    const auto first_acquired = first->TryAcquire();
+    ASSERT_TRUE(first_acquired.Succeeded()) << first_acquired.Message();
+    EXPECT_TRUE(first_acquired.Value());
+    EXPECT_TRUE(first->OwnsLock());
 
-    const auto second_acquired = second->try_acquire();
-    ASSERT_TRUE(second_acquired.succeeded()) << second_acquired.message();
-    EXPECT_FALSE(second_acquired.value());
-    EXPECT_FALSE(second->owns_lock());
+    const auto second_acquired = second->TryAcquire();
+    ASSERT_TRUE(second_acquired.Succeeded()) << second_acquired.Message();
+    EXPECT_FALSE(second_acquired.Value());
+    EXPECT_FALSE(second->OwnsLock());
 
-    ASSERT_TRUE(first->release().succeeded());
-    const auto retry = second->try_acquire();
-    ASSERT_TRUE(retry.succeeded()) << retry.message();
-    EXPECT_TRUE(retry.value());
+    ASSERT_TRUE(first->Release().Succeeded());
+    const auto retry = second->TryAcquire();
+    ASSERT_TRUE(retry.Succeeded()) << retry.Message();
+    EXPECT_TRUE(retry.Value());
 }
 
 TEST_F(MutexTests, DifferentNamesDoNotContend)
@@ -70,10 +71,10 @@ TEST_F(MutexTests, DifferentNamesDoNotContend)
     ASSERT_NE(first, nullptr);
     ASSERT_NE(second, nullptr);
 
-    ASSERT_TRUE(first->try_acquire().value());
-    const auto second_acquired = second->try_acquire();
-    ASSERT_TRUE(second_acquired.succeeded()) << second_acquired.message();
-    EXPECT_TRUE(second_acquired.value());
+    ASSERT_TRUE(first->TryAcquire().Value());
+    const auto second_acquired = second->TryAcquire();
+    ASSERT_TRUE(second_acquired.Succeeded()) << second_acquired.Message();
+    EXPECT_TRUE(second_acquired.Value());
 }
 
 TEST_F(MutexTests, ReleaseIsIdempotentAndDestructionReleases)
@@ -81,17 +82,17 @@ TEST_F(MutexTests, ReleaseIsIdempotentAndDestructionReleases)
     {
         auto mutex = CreateMutex(*platform, L"Winux.MutexTests.Lifetime");
         ASSERT_NE(mutex, nullptr);
-        ASSERT_TRUE(mutex->try_acquire().value());
-        ASSERT_TRUE(mutex->release().succeeded());
-        EXPECT_FALSE(mutex->owns_lock());
-        ASSERT_TRUE(mutex->release().succeeded());
+        ASSERT_TRUE(mutex->TryAcquire().Value());
+        ASSERT_TRUE(mutex->Release().Succeeded());
+        EXPECT_FALSE(mutex->OwnsLock());
+        ASSERT_TRUE(mutex->Release().Succeeded());
     }
 
     auto replacement = CreateMutex(*platform, L"Winux.MutexTests.Lifetime");
     ASSERT_NE(replacement, nullptr);
-    const auto acquired = replacement->try_acquire();
-    ASSERT_TRUE(acquired.succeeded()) << acquired.message();
-    EXPECT_TRUE(acquired.value());
+    const auto acquired = replacement->TryAcquire();
+    ASSERT_TRUE(acquired.Succeeded()) << acquired.Message();
+    EXPECT_TRUE(acquired.Value());
 }
 
 TEST_F(MutexTests, UnusualNamesRemainSafe)
@@ -100,9 +101,9 @@ TEST_F(MutexTests, UnusualNamesRemainSafe)
     auto mutex = CreateMutex(*platform, name);
     ASSERT_NE(mutex, nullptr);
 
-    const auto acquired = mutex->try_acquire();
-    ASSERT_TRUE(acquired.succeeded()) << acquired.message();
-    EXPECT_TRUE(acquired.value());
+    const auto acquired = mutex->TryAcquire();
+    ASSERT_TRUE(acquired.Succeeded()) << acquired.Message();
+    EXPECT_TRUE(acquired.Value());
 }
 
 }

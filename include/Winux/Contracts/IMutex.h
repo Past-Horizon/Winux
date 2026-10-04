@@ -16,19 +16,19 @@ public:
         @summary
         Attempts to acquire the mutex without blocking.
     */
-    virtual Core::Result<bool> try_acquire() = 0;
+    virtual Core::Result<bool> TryAcquire() = 0;
 
     /*
         @summary
         Releases the mutex if it is currently owned by this instance.
     */
-    virtual Core::Result<void> release() = 0;
+    virtual Core::Result<void> Release() = 0;
 
     /*
         @summary
         Returns whether this mutex instance currently owns the lock.
     */
-    virtual bool owns_lock() const noexcept = 0;
+    virtual bool OwnsLock() const noexcept = 0;
 };
 
 }

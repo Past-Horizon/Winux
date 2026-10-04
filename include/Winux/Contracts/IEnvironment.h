@@ -21,7 +21,7 @@ public:
         @param name
         Environment variable name.
     */
-    virtual Core::Result<std::wstring> get_env(const std::wstring& name) = 0;
+    virtual Core::Result<std::wstring> GetEnv(const std::wstring& name) = 0;
 
     /*
         @summary
@@ -33,7 +33,7 @@ public:
         @param value
         Value to set.
     */
-    virtual Core::Result<void> set_env(
+    virtual Core::Result<void> SetEnv(
         const std::wstring& name,
         const std::wstring& value) = 0;
 
@@ -44,7 +44,7 @@ public:
         @param name
         Environment variable name.
     */
-    virtual Core::Result<void> unset_env(const std::wstring& name) = 0;
+    virtual Core::Result<void> UnsetEnv(const std::wstring& name) = 0;
 };
 
 }

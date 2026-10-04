@@ -33,9 +33,9 @@ Winux::Core::Result<Value> ToWinuxResult(
 {
     if (result.failed())
     {
-        return Winux::Core::Result<Value>::failure(CodecErrorMessage(*result.error()));
+        return Winux::Core::Result<Value>::Failure(CodecErrorMessage(*result.error()));
     }
-    return Winux::Core::Result<Value>::success(result.value());
+    return Winux::Core::Result<Value>::Success(result.value());
 }
 
 Winux::Core::Result<void> ToWinuxResult(
@@ -43,9 +43,9 @@ Winux::Core::Result<void> ToWinuxResult(
 {
     if (result.failed())
     {
-        return Winux::Core::Result<void>::failure(CodecErrorMessage(*result.error()));
+        return Winux::Core::Result<void>::Failure(CodecErrorMessage(*result.error()));
     }
-    return Winux::Core::Result<void>::success();
+    return Winux::Core::Result<void>::Success();
 }
 
 }

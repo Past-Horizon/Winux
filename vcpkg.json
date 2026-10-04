@@ -1,6 +1,6 @@
 {
   "name": "winux",
-  "version-string": "0.4.1",
+  "version-string": "1.0.0",
   "dependencies": [
     "mbedtls"
   ]

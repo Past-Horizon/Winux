@@ -1,10 +1,10 @@
 #include <Winux/Winux.h>
+#include "TestPlatform.h"
 
 #include <gtest/gtest.h>
 
 #include <array>
 #include <filesystem>
-#include <memory>
 #include <string>
 
 namespace {
@@ -14,15 +14,13 @@ class FileSystemTests : public ::testing::Test
 protected:
     void SetUp() override
     {
-        platform = Winux::Platform::create();
-        ASSERT_NE(platform, nullptr);
-        file_system = &platform->file_system();
-        environment = &platform->environment();
+        Winux::Testing::InitializePlatformOnce();
+        file_system = &Winux::Get<Winux::FileSystem>();
+        environment = &Winux::Get<Winux::Environment>();
     }
 
-    std::unique_ptr<Winux::Contracts::IPlatform> platform;
-    Winux::Contracts::IFileSystem* file_system = nullptr;
-    Winux::Contracts::IEnvironment* environment = nullptr;
+    Winux::FileSystem* file_system = nullptr;
+    Winux::Environment* environment = nullptr;
 };
 
 TEST_F(FileSystemTests, PlatformCreationProvidesFileSystemApi)
@@ -33,167 +31,219 @@ TEST_F(FileSystemTests, PlatformCreationProvidesFileSystemApi)
 TEST_F(FileSystemTests, KnownFoldersReturnPaths)
 {
     const std::array paths{
-        file_system->home(),
-        file_system->desktop(),
-        file_system->app_data().start(),
-        file_system->temp()};
+        file_system->Home(),
+        file_system->Desktop(),
+        file_system->AppData(),
+        file_system->Temp()};
 
     for (const auto& result : paths)
     {
-        ASSERT_TRUE(result.succeeded()) << result.message();
-        EXPECT_FALSE(result.value().empty());
+        ASSERT_TRUE(result.Succeeded()) << result.Message();
+        EXPECT_FALSE(result.Value().empty());
     }
 }
 
 TEST_F(FileSystemTests, AppDataScopesAreComposable)
 {
-    const auto local = file_system->app_data().start();
-    const auto explicit_local = file_system->app_data().local().start();
-    const auto local_low = file_system->app_data().local_low().start();
-    const auto roaming = file_system->app_data().roaming().start();
+    const auto local = file_system->AppData();
+    const auto explicit_local = file_system->AppData(Winux::AppDataScope::Local);
+    const auto local_low = file_system->AppData(Winux::AppDataScope::LocalLow);
+    const auto roaming = file_system->AppData(Winux::AppDataScope::Roaming);
 
-    ASSERT_TRUE(local.succeeded()) << local.message();
-    ASSERT_TRUE(explicit_local.succeeded()) << explicit_local.message();
-    ASSERT_TRUE(local_low.succeeded()) << local_low.message();
-    ASSERT_TRUE(roaming.succeeded()) << roaming.message();
-    EXPECT_EQ(local.value(), explicit_local.value());
-    EXPECT_FALSE((local.value() / "Winux").empty());
-    EXPECT_NE(local.value(), local_low.value());
-    EXPECT_NE(local.value(), roaming.value());
+    ASSERT_TRUE(local.Succeeded()) << local.Message();
+    ASSERT_TRUE(explicit_local.Succeeded()) << explicit_local.Message();
+    ASSERT_TRUE(local_low.Succeeded()) << local_low.Message();
+    ASSERT_TRUE(roaming.Succeeded()) << roaming.Message();
+    EXPECT_EQ(local.Value(), explicit_local.Value());
+    EXPECT_FALSE((local.Value() / "Winux").empty());
+    EXPECT_NE(local.Value(), local_low.Value());
+    EXPECT_NE(local.Value(), roaming.Value());
 }
 
 TEST_F(FileSystemTests, EnvironmentVariableRoundTrips)
 {
     constexpr auto name = L"WINUX_TEST_ENVIRONMENT_VARIABLE";
     ASSERT_NE(environment, nullptr);
-    ASSERT_TRUE(environment->unset_env(name).succeeded());
+    ASSERT_TRUE(environment->UnsetEnv(name).Succeeded());
 
-    const auto missing = environment->get_env(name);
-    EXPECT_TRUE(missing.failed());
+    const auto missing = environment->GetEnv(name);
+    EXPECT_TRUE(missing.Failed());
 
-    ASSERT_TRUE(environment->set_env(name, L"winux-value").succeeded());
-    const auto value = environment->get_env(name);
-    ASSERT_TRUE(value.succeeded()) << value.message();
-    EXPECT_EQ(value.value(), L"winux-value");
+    ASSERT_TRUE(environment->SetEnv(name, L"winux-value").Succeeded());
+    const auto value = environment->GetEnv(name);
+    ASSERT_TRUE(value.Succeeded()) << value.Message();
+    EXPECT_EQ(value.Value(), L"winux-value");
 
-    ASSERT_TRUE(environment->unset_env(name).succeeded());
-    EXPECT_TRUE(environment->get_env(name).failed());
+    ASSERT_TRUE(environment->UnsetEnv(name).Succeeded());
+    EXPECT_TRUE(environment->GetEnv(name).Failed());
 }
 
 TEST_F(FileSystemTests, WriteAndReadFileSucceeds)
 {
-    const auto temp = file_system->temp();
-    ASSERT_TRUE(temp.succeeded()) << temp.message();
+    const auto temp = file_system->Temp();
+    ASSERT_TRUE(temp.Succeeded()) << temp.Message();
 
-    const std::filesystem::path file = temp.value() / "winux-filesystem-test.txt";
+    const std::filesystem::path file = temp.Value() / "winux-filesystem-test.txt";
     std::error_code cleanup_error;
     std::filesystem::remove(file, cleanup_error);
 
-    const auto written = file_system->write_file(file, "Winux file test");
-    ASSERT_TRUE(written.succeeded()) << written.message();
+    const auto written = file_system->WriteFile(file, "Winux file test");
+    ASSERT_TRUE(written.Succeeded()) << written.Message();
 
-    const auto read = file_system->read_file(file);
-    ASSERT_TRUE(read.succeeded()) << read.message();
-    EXPECT_EQ(read.value(), "Winux file test");
+    const auto read = file_system->ReadFile(file);
+    ASSERT_TRUE(read.Succeeded()) << read.Message();
+    EXPECT_EQ(read.Value(), "Winux file test");
 
     std::filesystem::remove(file, cleanup_error);
 }
 
+TEST_F(FileSystemTests, CommonFilesystemOperationsReturnResults)
+{
+    const auto temp = file_system->Temp();
+    ASSERT_TRUE(temp.Succeeded()) << temp.Message();
+
+    const auto directory = temp.Value() / "winux-filesystem-operations" / "nested";
+    const auto created = file_system->CreateDirectories(directory);
+    ASSERT_TRUE(created.Succeeded()) << created.Message();
+    EXPECT_TRUE(created.Value());
+
+    const auto already_created = file_system->CreateDirectories(directory);
+    ASSERT_TRUE(already_created.Succeeded()) << already_created.Message();
+    EXPECT_FALSE(already_created.Value());
+
+    const auto is_directory = file_system->IsDirectory(directory);
+    ASSERT_TRUE(is_directory.Succeeded()) << is_directory.Message();
+    EXPECT_TRUE(is_directory.Value());
+
+    const auto exists = file_system->Exists(directory);
+    ASSERT_TRUE(exists.Succeeded()) << exists.Message();
+    EXPECT_TRUE(exists.Value());
+
+    const auto file = directory / "size.txt";
+    ASSERT_TRUE(file_system->WriteFile(file, "size").Succeeded());
+    const auto file_exists = file_system->Exists(file);
+    ASSERT_TRUE(file_exists.Succeeded()) << file_exists.Message();
+    EXPECT_TRUE(file_exists.Value());
+
+    const auto file_size = file_system->FileSize(file);
+    ASSERT_TRUE(file_size.Succeeded()) << file_size.Message();
+    EXPECT_EQ(file_size.Value(), 4u);
+
+    const auto removed_file = file_system->Remove(file);
+    ASSERT_TRUE(removed_file.Succeeded()) << removed_file.Message();
+    EXPECT_TRUE(removed_file.Value());
+
+    const auto removed_directory = file_system->Remove(directory);
+    ASSERT_TRUE(removed_directory.Succeeded()) << removed_directory.Message();
+    EXPECT_TRUE(removed_directory.Value());
+
+    const auto removed_missing = file_system->Remove(file);
+    ASSERT_TRUE(removed_missing.Succeeded()) << removed_missing.Message();
+    EXPECT_FALSE(removed_missing.Value());
+
+    const auto missing = file_system->FileSize(file);
+    EXPECT_TRUE(missing.Failed());
+    EXPECT_FALSE(missing.Message().empty());
+
+    std::error_code cleanup_error;
+    std::filesystem::remove_all(directory.parent_path(), cleanup_error);
+}
+
 TEST_F(FileSystemTests, MoveFileSucceeds)
 {
-    const auto temp = file_system->temp();
-    ASSERT_TRUE(temp.succeeded()) << temp.message();
+    const auto temp = file_system->Temp();
+    ASSERT_TRUE(temp.Succeeded()) << temp.Message();
 
-    const std::filesystem::path source = temp.value() / "winux-filesystem-move-source.txt";
-    const std::filesystem::path destination = temp.value() / "winux-filesystem-move-destination.txt";
+    const std::filesystem::path source = temp.Value() / "winux-filesystem-move-source.txt";
+    const std::filesystem::path destination = temp.Value() / "winux-filesystem-move-destination.txt";
     std::error_code cleanup_error;
     std::filesystem::remove(source, cleanup_error);
     std::filesystem::remove(destination, cleanup_error);
 
-    ASSERT_TRUE(file_system->write_file(source, "Winux move test").succeeded());
-    const auto moved = file_system->move_file(source, destination);
-    ASSERT_TRUE(moved.succeeded()) << moved.message();
+    ASSERT_TRUE(file_system->WriteFile(source, "Winux move test").Succeeded());
+    const auto moved = file_system->MoveFile(source, destination);
+    ASSERT_TRUE(moved.Succeeded()) << moved.Message();
     EXPECT_FALSE(std::filesystem::exists(source));
     EXPECT_TRUE(std::filesystem::exists(destination));
 
-    const auto contents = file_system->read_file(destination);
-    ASSERT_TRUE(contents.succeeded()) << contents.message();
-    EXPECT_EQ(contents.value(), "Winux move test");
+    const auto contents = file_system->ReadFile(destination);
+    ASSERT_TRUE(contents.Succeeded()) << contents.Message();
+    EXPECT_EQ(contents.Value(), "Winux move test");
 
     std::filesystem::remove(destination, cleanup_error);
 }
 
 TEST_F(FileSystemTests, MoveFileReplacesExistingDestination)
 {
-    const auto temp = file_system->temp();
-    ASSERT_TRUE(temp.succeeded()) << temp.message();
+    const auto temp = file_system->Temp();
+    ASSERT_TRUE(temp.Succeeded()) << temp.Message();
 
-    const std::filesystem::path source = temp.value() / "winux-filesystem-replace-source.txt";
-    const std::filesystem::path destination = temp.value() / "winux-filesystem-replace-destination.txt";
+    const std::filesystem::path source = temp.Value() / "winux-filesystem-replace-source.txt";
+    const std::filesystem::path destination = temp.Value() / "winux-filesystem-replace-destination.txt";
     std::error_code cleanup_error;
     std::filesystem::remove(source, cleanup_error);
     std::filesystem::remove(destination, cleanup_error);
 
-    ASSERT_TRUE(file_system->write_file(source, "new contents").succeeded());
-    ASSERT_TRUE(file_system->write_file(destination, "old contents").succeeded());
+    ASSERT_TRUE(file_system->WriteFile(source, "new contents").Succeeded());
+    ASSERT_TRUE(file_system->WriteFile(destination, "old contents").Succeeded());
 
-    const auto moved = file_system->move_file(source, destination);
-    ASSERT_TRUE(moved.succeeded()) << moved.message();
+    const auto moved = file_system->MoveFile(source, destination);
+    ASSERT_TRUE(moved.Succeeded()) << moved.Message();
     EXPECT_FALSE(std::filesystem::exists(source));
 
-    const auto contents = file_system->read_file(destination);
-    ASSERT_TRUE(contents.succeeded()) << contents.message();
-    EXPECT_EQ(contents.value(), "new contents");
+    const auto contents = file_system->ReadFile(destination);
+    ASSERT_TRUE(contents.Succeeded()) << contents.Message();
+    EXPECT_EQ(contents.Value(), "new contents");
 
     std::filesystem::remove(destination, cleanup_error);
 }
 
 TEST_F(FileSystemTests, MoveFileFailuresReturnFailure)
 {
-    const auto temp = file_system->temp();
-    ASSERT_TRUE(temp.succeeded()) << temp.message();
+    const auto temp = file_system->Temp();
+    ASSERT_TRUE(temp.Succeeded()) << temp.Message();
 
-    const std::filesystem::path missing_source = temp.value() / "winux-missing-move-source.txt";
-    const std::filesystem::path destination = temp.value() / "winux-move-destination.txt";
+    const std::filesystem::path missing_source = temp.Value() / "winux-missing-move-source.txt";
+    const std::filesystem::path destination = temp.Value() / "winux-move-destination.txt";
     std::error_code cleanup_error;
     std::filesystem::remove(missing_source, cleanup_error);
     std::filesystem::remove(destination, cleanup_error);
 
-    const auto missing = file_system->move_file(missing_source, destination);
-    EXPECT_TRUE(missing.failed());
-    EXPECT_FALSE(missing.message().empty());
+    const auto missing = file_system->MoveFile(missing_source, destination);
+    EXPECT_TRUE(missing.Failed());
+    EXPECT_FALSE(missing.Message().empty());
 
-    const std::filesystem::path source = temp.value() / "winux-move-source.txt";
+    const std::filesystem::path source = temp.Value() / "winux-move-source.txt";
     const std::filesystem::path invalid_destination =
-        temp.value() / "winux-missing-move-directory" / "destination.txt";
+        temp.Value() / "winux-missing-move-directory" / "destination.txt";
     std::filesystem::remove(source, cleanup_error);
-    ASSERT_TRUE(file_system->write_file(source, "data").succeeded());
+    ASSERT_TRUE(file_system->WriteFile(source, "data").Succeeded());
 
-    const auto invalid = file_system->move_file(source, invalid_destination);
-    EXPECT_TRUE(invalid.failed());
-    EXPECT_FALSE(invalid.message().empty());
+    const auto invalid = file_system->MoveFile(source, invalid_destination);
+    EXPECT_TRUE(invalid.Failed());
+    EXPECT_FALSE(invalid.Message().empty());
 
     std::filesystem::remove(source, cleanup_error);
 }
 
 TEST_F(FileSystemTests, ReadAndWriteFailuresReturnFailure)
 {
-    const auto temp = file_system->temp();
-    ASSERT_TRUE(temp.succeeded()) << temp.message();
+    const auto temp = file_system->Temp();
+    ASSERT_TRUE(temp.Succeeded()) << temp.Message();
 
-    const std::filesystem::path missing_file = temp.value() / "winux-file-does-not-exist.txt";
+    const std::filesystem::path missing_file = temp.Value() / "winux-file-does-not-exist.txt";
     std::error_code cleanup_error;
     std::filesystem::remove(missing_file, cleanup_error);
 
-    const auto read = file_system->read_file(missing_file);
-    EXPECT_TRUE(read.failed());
-    EXPECT_FALSE(read.message().empty());
+    const auto read = file_system->ReadFile(missing_file);
+    EXPECT_TRUE(read.Failed());
+    EXPECT_FALSE(read.Message().empty());
 
     const std::filesystem::path invalid_file =
-        temp.value() / "winux-missing-directory" / "file.txt";
-    const auto written = file_system->write_file(invalid_file, "data");
-    EXPECT_TRUE(written.failed());
-    EXPECT_FALSE(written.message().empty());
+        temp.Value() / "winux-missing-directory" / "file.txt";
+    const auto written = file_system->WriteFile(invalid_file, "data");
+    EXPECT_TRUE(written.Failed());
+    EXPECT_FALSE(written.Message().empty());
 }
 
 }

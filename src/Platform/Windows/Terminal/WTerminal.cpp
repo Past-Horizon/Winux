@@ -8,44 +8,35 @@
 
 namespace Winux::Platform::Windows {
 
-Contracts::ITerminal& Win32::terminal()
+Contracts::ITerminal& Win32::GetTerminal()
 {
     return *this;
 }
 
-Core::Result<std::string> Win32::execute_command(const std::wstring& command_line)
+Core::Result<std::string> Win32::ExecuteCommand(const std::wstring& command_line)
 {
     if (command_line.empty())
     {
-        return Core::Result<std::string>::failure(
+        return Core::Result<std::string>::Failure(
             "Unable to execute command: command line was empty");
     }
 
     std::FILE* pipe = _wpopen(command_line.c_str(), L"r");
     if (pipe == nullptr)
     {
-        return Core::Result<std::string>::failure(
+        return Core::Result<std::string>::Failure(
             "Unable to execute command: failed to open process pipe");
     }
 
-    const std::string output = Winux::Platform::read_pipe(pipe);
+    const std::string output = Winux::Platform::ReadPipe(pipe);
     const int status = _pclose(pipe);
     if (status != 0)
     {
-        return Core::Result<std::string>::failure(
+        return Core::Result<std::string>::Failure(
             "Unable to execute command (exit code " + std::to_string(status) + ")");
     }
 
-    return Core::Result<std::string>::success(output);
-}
-
-std::shared_ptr<Contracts::ITerminal::ICommand> Win32::create_command(
-    ExecuteHandler execute_handler,
-    CanExecuteHandler can_execute_handler)
-{
-    return Winux::Platform::make_terminal_command(
-        std::move(execute_handler),
-        std::move(can_execute_handler));
+    return Core::Result<std::string>::Success(output);
 }
 
 }

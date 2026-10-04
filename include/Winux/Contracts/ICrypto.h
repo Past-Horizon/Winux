@@ -32,7 +32,7 @@ public:
         @returns
         Success when the entire buffer is filled, otherwise a failure describing the provider error.
     */
-    virtual Core::Result<void> fill_random(std::span<std::byte> output) = 0;
+    virtual Core::Result<void> FillRandom(std::span<std::byte> output);
 
     /*
         @summary
@@ -41,7 +41,7 @@ public:
         @param input
         Data to hash.
     */
-    virtual Core::Result<Sha256Digest> sha256(std::span<const std::byte> input) = 0;
+    virtual Core::Result<Sha256Digest> Sha256(std::span<const std::byte> input);
 
     /*
         @summary
@@ -53,9 +53,9 @@ public:
         @param input
         Data to authenticate.
     */
-    virtual Core::Result<Sha256Digest> hmac_sha256(
+    virtual Core::Result<Sha256Digest> HmacSha256(
         std::span<const std::byte> key,
-        std::span<const std::byte> input) = 0;
+        std::span<const std::byte> input);
 
     /*
         @summary
@@ -73,11 +73,11 @@ public:
         @param output
         Destination for derived key material; it can contain at most 8160 bytes.
     */
-    virtual Core::Result<void> hkdf_sha256(
+    virtual Core::Result<void> HkdfSha256(
         std::span<const std::byte> input_key_material,
         std::span<const std::byte> salt,
         std::span<const std::byte> info,
-        std::span<std::byte> output) = 0;
+        std::span<std::byte> output);
 };
 
 }

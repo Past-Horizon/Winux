@@ -1,4 +1,5 @@
 #include <Winux/Winux.h>
+#include "TestPlatform.h"
 
 #include <gtest/gtest.h>
 
@@ -15,18 +16,18 @@ class ProcessTests : public ::testing::Test
 protected:
     void SetUp() override
     {
-        platform = Winux::Platform::create();
-        ASSERT_NE(platform, nullptr);
-        process = &platform->process();
+        Winux::Testing::InitializePlatformOnce();
+        platform = &Winux::Get<Winux::PlatformContext>();
+        process = &Winux::Get<Winux::Process>();
     }
 
     void TearDown() override
     {
         for (const std::uint32_t process_id : created_processes)
         {
-            if (process->is_running(process_id).succeeded())
+            if (process->IsRunning(process_id).Succeeded())
             {
-                process->terminate_process(process_id);
+                process->TerminateProcess(process_id);
             }
         }
     }
@@ -34,24 +35,23 @@ protected:
     std::uint32_t create_test_process()
     {
 #ifdef _WIN32
-        const auto result = process->create_process(
-            L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"")
-            .start();
+        const auto result = process->CreateProcess(
+            L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"");
 #else
-        const auto result = process->create_process(L"sleep 30").start();
+        const auto result = process->CreateProcess(L"sleep 30");
 #endif
-        EXPECT_TRUE(result.succeeded()) << result.message();
-        if (result.failed())
+        EXPECT_TRUE(result.Succeeded()) << result.Message();
+        if (result.Failed())
         {
             return 0;
         }
 
-        created_processes.push_back(result.value());
-        return result.value();
+        created_processes.push_back(result.Value());
+        return result.Value();
     }
 
-    std::unique_ptr<Winux::Contracts::IPlatform> platform;
-    Winux::Contracts::IProcess* process = nullptr;
+    Winux::PlatformContext* platform = nullptr;
+    Winux::Process* process = nullptr;
     std::vector<std::uint32_t> created_processes;
 };
 
@@ -61,21 +61,16 @@ TEST_F(ProcessTests, PlatformCreationProvidesProcessApi)
     ASSERT_NE(process, nullptr);
 }
 
-TEST_F(ProcessTests, ProcessOptionsMatchPlatformSupport)
+TEST_F(ProcessTests, ProcessCapabilitiesMatchPlatformSupport)
 {
-    const auto supported = platform->supported_features();
-    EXPECT_TRUE(supported.contains(
-        Winux::Contracts::IProcess::ProcessOption::Detached));
+    const auto supported = platform->SupportedFeatures();
+    EXPECT_TRUE(supported.Has<Winux::Process::Detached>());
 #ifdef _WIN32
-    EXPECT_TRUE(supported.contains(
-        Winux::Contracts::IProcess::ProcessOption::CreateNoWindow));
-    EXPECT_TRUE(supported.contains(
-        Winux::Contracts::IProcess::ProcessOption::CreateNewConsole));
+    EXPECT_TRUE(supported.Has<Winux::Process::CreateNoWindow>());
+    EXPECT_TRUE(supported.Has<Winux::Process::CreateNewConsole>());
 #else
-    EXPECT_FALSE(supported.contains(
-        Winux::Contracts::IProcess::ProcessOption::CreateNoWindow));
-    EXPECT_FALSE(supported.contains(
-        Winux::Contracts::IProcess::ProcessOption::CreateNewConsole));
+    EXPECT_FALSE(supported.Has<Winux::Process::CreateNoWindow>());
+    EXPECT_FALSE(supported.Has<Winux::Process::CreateNewConsole>());
 #endif
 }
 
@@ -84,27 +79,29 @@ TEST_F(ProcessTests, CreateProcessReturnsRunningProcess)
     const std::uint32_t process_id = create_test_process();
     ASSERT_NE(process_id, 0u);
 
-    const auto running = process->is_running(process_id);
-    ASSERT_TRUE(running.succeeded()) << running.message();
-    EXPECT_TRUE(running.value());
+    const auto running = process->IsRunning(process_id);
+    ASSERT_TRUE(running.Succeeded()) << running.Message();
+    EXPECT_TRUE(running.Value());
 }
 
-TEST_F(ProcessTests, DetachedOptionStartsProcess)
+TEST_F(ProcessTests, DetachedCapabilityStartsProcess)
 {
+    Winux::CapabilitySet options;
+    options.Add<Winux::Process::Detached>();
 #ifdef _WIN32
-    const auto result = process->create_process(
-        L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"")
-        .detached()
-        .start();
+    const auto result = process->CreateProcess(
+        L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"",
+        options);
 #else
-    const auto result = process->create_process(L"sleep 30").detached().start();
+    const auto result = process->CreateProcess(
+        L"sleep 30", options);
 #endif
-    ASSERT_TRUE(result.succeeded()) << result.message();
-    created_processes.push_back(result.value());
+    ASSERT_TRUE(result.Succeeded()) << result.Message();
+    created_processes.push_back(result.Value());
 
-    const auto running = process->is_running(result.value());
-    ASSERT_TRUE(running.succeeded()) << running.message();
-    EXPECT_TRUE(running.value());
+    const auto running = process->IsRunning(result.Value());
+    ASSERT_TRUE(running.Succeeded()) << running.Message();
+    EXPECT_TRUE(running.Value());
 }
 
 TEST_F(ProcessTests, FindLocationReturnsExecutablePath)
@@ -112,23 +109,23 @@ TEST_F(ProcessTests, FindLocationReturnsExecutablePath)
     const std::uint32_t process_id = create_test_process();
     ASSERT_NE(process_id, 0u);
 
-    const auto location = process->find_location(process_id);
-    ASSERT_TRUE(location.succeeded()) << location.message();
-    EXPECT_TRUE(std::filesystem::exists(location.value()));
-    EXPECT_FALSE(location.value().empty());
+    const auto location = process->FindLocation(process_id);
+    ASSERT_TRUE(location.Succeeded()) << location.Message();
+    EXPECT_TRUE(std::filesystem::exists(location.Value()));
+    EXPECT_FALSE(location.Value().empty());
 }
 
 TEST_F(ProcessTests, FindLocationRejectsInvalidProcess)
 {
-    const auto location = process->find_location(0);
-    EXPECT_TRUE(location.failed());
+    const auto location = process->FindLocation(0);
+    EXPECT_TRUE(location.Failed());
 }
 
 TEST_F(ProcessTests, GetExecutableDirectoryReturnsCurrentDirectory)
 {
-    const auto directory = process->get_executable_directory();
-    ASSERT_TRUE(directory.succeeded()) << directory.message();
-    EXPECT_TRUE(std::filesystem::is_directory(directory.value()));
+    const auto directory = process->GetExecutableDirectory();
+    ASSERT_TRUE(directory.Succeeded()) << directory.Message();
+    EXPECT_TRUE(std::filesystem::is_directory(directory.Value()));
 }
 
 TEST_F(ProcessTests, GetExecutableDirectoryReturnsProcessDirectory)
@@ -136,9 +133,9 @@ TEST_F(ProcessTests, GetExecutableDirectoryReturnsProcessDirectory)
     const std::uint32_t process_id = create_test_process();
     ASSERT_NE(process_id, 0u);
 
-    const auto directory = process->get_executable_directory(process_id);
-    ASSERT_TRUE(directory.succeeded()) << directory.message();
-    EXPECT_TRUE(std::filesystem::is_directory(directory.value()));
+    const auto directory = process->GetExecutableDirectory(process_id);
+    ASSERT_TRUE(directory.Succeeded()) << directory.Message();
+    EXPECT_TRUE(std::filesystem::is_directory(directory.Value()));
 }
 
 TEST_F(ProcessTests, FindProcessFindsCreatedProcess)
@@ -147,19 +144,19 @@ TEST_F(ProcessTests, FindProcessFindsCreatedProcess)
     ASSERT_NE(process_id, 0u);
 
 #ifdef _WIN32
-    const auto result = process->find_process(L"cmd.exe");
+    const auto result = process->FindProcess(L"cmd.exe");
 #else
-    const auto result = process->find_process(L"sleep");
+    const auto result = process->FindProcess(L"sleep");
 #endif
-    ASSERT_TRUE(result.succeeded()) << result.message();
-    ASSERT_TRUE(result.value().has_value());
+    ASSERT_TRUE(result.Succeeded()) << result.Message();
+    ASSERT_TRUE(result.Value().has_value());
 }
 
 TEST_F(ProcessTests, FindProcessReportsMissingProcess)
 {
-    const auto result = process->find_process(L"winux-process-that-does-not-exist");
-    ASSERT_TRUE(result.succeeded()) << result.message();
-    EXPECT_FALSE(result.value().has_value());
+    const auto result = process->FindProcess(L"winux-process-that-does-not-exist");
+    ASSERT_TRUE(result.Succeeded()) << result.Message();
+    EXPECT_FALSE(result.Value().has_value());
 }
 
 TEST_F(ProcessTests, FindProcessesReturnsCreatedProcess)
@@ -168,12 +165,12 @@ TEST_F(ProcessTests, FindProcessesReturnsCreatedProcess)
     ASSERT_NE(process_id, 0u);
 
 #ifdef _WIN32
-    const auto result = process->find_processes(L"cmd.exe");
+    const auto result = process->FindProcesses(L"cmd.exe");
 #else
-    const auto result = process->find_processes(L"sleep");
+    const auto result = process->FindProcesses(L"sleep");
 #endif
-    ASSERT_TRUE(result.succeeded()) << result.message();
-    EXPECT_FALSE(result.value().empty());
+    ASSERT_TRUE(result.Succeeded()) << result.Message();
+    EXPECT_FALSE(result.Value().empty());
 }
 
 TEST_F(ProcessTests, IsRunningChangesAfterTermination)
@@ -181,76 +178,82 @@ TEST_F(ProcessTests, IsRunningChangesAfterTermination)
     const std::uint32_t process_id = create_test_process();
     ASSERT_NE(process_id, 0u);
 
-    const auto before = process->is_running(process_id);
-    ASSERT_TRUE(before.succeeded()) << before.message();
-    ASSERT_TRUE(before.value());
+    const auto before = process->IsRunning(process_id);
+    ASSERT_TRUE(before.Succeeded()) << before.Message();
+    ASSERT_TRUE(before.Value());
 
-    const auto terminated = process->force_terminate_process(process_id);
-    ASSERT_TRUE(terminated.succeeded()) << terminated.message();
+    const auto terminated = process->ForceTerminateProcess(process_id);
+    ASSERT_TRUE(terminated.Succeeded()) << terminated.Message();
 
-    const auto after = process->is_running(process_id);
-    ASSERT_TRUE(after.succeeded()) << after.message();
-    EXPECT_FALSE(after.value());
+    const auto after = process->IsRunning(process_id);
+    ASSERT_TRUE(after.Succeeded()) << after.Message();
+    EXPECT_FALSE(after.Value());
 }
 
 TEST_F(ProcessTests, TerminateRejectsInvalidProcess)
 {
-    const auto terminated = process->terminate_process(0);
-    EXPECT_TRUE(terminated.failed());
+    const auto terminated = process->TerminateProcess(0);
+    EXPECT_TRUE(terminated.Failed());
 }
 
 TEST_F(ProcessTests, ForceTerminateRejectsInvalidProcess)
 {
-    const auto terminated = process->force_terminate_process(0);
-    EXPECT_TRUE(terminated.failed());
+    const auto terminated = process->ForceTerminateProcess(0);
+    EXPECT_TRUE(terminated.Failed());
 }
 
 #ifdef _WIN32
-TEST_F(ProcessTests, NoWindowOptionStartsProcess)
+TEST_F(ProcessTests, NoWindowCapabilityStartsProcess)
 {
-    const auto result = process->create_process(
-        L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"")
-        .no_window()
-        .start();
-    ASSERT_TRUE(result.succeeded()) << result.message();
-    created_processes.push_back(result.value());
+    Winux::CapabilitySet options;
+    options.Add<Winux::Process::CreateNoWindow>();
+    const auto result = process->CreateProcess(
+        L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"",
+        options);
+    ASSERT_TRUE(result.Succeeded()) << result.Message();
+    created_processes.push_back(result.Value());
 
-    const auto running = process->is_running(result.value());
-    ASSERT_TRUE(running.succeeded()) << running.message();
-    EXPECT_TRUE(running.value());
+    const auto running = process->IsRunning(result.Value());
+    ASSERT_TRUE(running.Succeeded()) << running.Message();
+    EXPECT_TRUE(running.Value());
 }
 
-TEST_F(ProcessTests, NewConsoleOptionStartsProcess)
+TEST_F(ProcessTests, NewConsoleCapabilityStartsProcess)
 {
-    const auto result = process->create_process(
-        L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"")
-        .new_console()
-        .start();
-    ASSERT_TRUE(result.succeeded()) << result.message();
-    created_processes.push_back(result.value());
+    Winux::CapabilitySet options;
+    options.Add<Winux::Process::CreateNewConsole>();
+    const auto result = process->CreateProcess(
+        L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"",
+        options);
+    ASSERT_TRUE(result.Succeeded()) << result.Message();
+    created_processes.push_back(result.Value());
 
-    const auto running = process->is_running(result.value());
-    ASSERT_TRUE(running.succeeded()) << running.message();
-    EXPECT_TRUE(running.value());
+    const auto running = process->IsRunning(result.Value());
+    ASSERT_TRUE(running.Succeeded()) << running.Message();
+    EXPECT_TRUE(running.Value());
 }
 
-TEST_F(ProcessTests, DetachedAndNewConsoleOptionsAreIncompatible)
+TEST_F(ProcessTests, DetachedAndNewConsoleCapabilitiesAreIncompatible)
 {
-    const auto result = process->create_process(
-        L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"")
-        .detached()
-        .new_console()
-        .start();
-    EXPECT_TRUE(result.failed());
+    Winux::CapabilitySet options;
+    options.Add<Winux::Process::Detached>();
+    options.Add<Winux::Process::CreateNewConsole>();
+    const auto result = process->CreateProcess(
+        L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"", options);
+    EXPECT_TRUE(result.Failed());
 }
 #else
-TEST_F(ProcessTests, UnsupportedWindowsOptionsFailBeforeStarting)
+TEST_F(ProcessTests, UnsupportedWindowsCapabilitiesFailBeforeStarting)
 {
-    const auto no_window = process->create_process(L"sleep 30").no_window().start();
-    EXPECT_TRUE(no_window.failed());
+    Winux::CapabilitySet no_window_options;
+    no_window_options.Add<Winux::Process::CreateNoWindow>();
+    const auto no_window = process->CreateProcess(L"sleep 30", no_window_options);
+    EXPECT_TRUE(no_window.Failed());
 
-    const auto new_console = process->create_process(L"sleep 30").new_console().start();
-    EXPECT_TRUE(new_console.failed());
+    Winux::CapabilitySet new_console_options;
+    new_console_options.Add<Winux::Process::CreateNewConsole>();
+    const auto new_console = process->CreateProcess(L"sleep 30", new_console_options);
+    EXPECT_TRUE(new_console.Failed());
 }
 #endif
 

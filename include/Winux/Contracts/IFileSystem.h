@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Winux/Core/Operations.h>
 #include <Winux/Core/Results.h>
 
+#include <cstdint>
 #include <filesystem>
 #include <ios>
 #include <string>
@@ -11,9 +11,9 @@
 namespace Winux::Contracts {
 
 enum class AppDataScope {
-    local,
-    local_low,
-    roaming
+    Local,
+    LocalLow,
+    Roaming
 };
 
 /*
@@ -22,35 +22,7 @@ enum class AppDataScope {
 */
 class IFileSystem {
 public:
-    using app_data_result = Core::Result<std::filesystem::path>;
-
-    class app_data_operation
-        : public Core::Operation<app_data_result, AppDataScope>
-    {
-    public:
-        app_data_operation(action action)
-            : Operation(std::move(action))
-        {
-        }
-
-        app_data_operation& local()
-        {
-            options() = AppDataScope::local;
-            return *this;
-        }
-
-        app_data_operation& local_low()
-        {
-            options() = AppDataScope::local_low;
-            return *this;
-        }
-
-        app_data_operation& roaming()
-        {
-            options() = AppDataScope::roaming;
-            return *this;
-        }
-    };
+    using AppDataResult = Core::Result<std::filesystem::path>;
 
     virtual ~IFileSystem() = default;
 
@@ -58,32 +30,61 @@ public:
         @summary
         Returns the current user's home directory.
     */
-    virtual Core::Result<std::filesystem::path> home() = 0;
+    virtual Core::Result<std::filesystem::path> Home() = 0;
 
     /*
         @summary
         Returns the desktop directory for the current user.
     */
-    virtual Core::Result<std::filesystem::path> desktop() = 0;
+    virtual Core::Result<std::filesystem::path> Desktop() = 0;
 
     /*
         @summary
         Returns the application data directory for the current user.
     */
-    app_data_operation app_data()
-    {
-        return app_data_operation(
-            [this](AppDataScope scope)
-            {
-                return app_data_impl(scope);
-            });
-    }
+    virtual AppDataResult AppData(AppDataScope scope = AppDataScope::Local) = 0;
 
     /*
         @summary
         Returns the temporary directory used by the system.
     */
-    virtual Core::Result<std::filesystem::path> temp() = 0;
+    virtual Core::Result<std::filesystem::path> Temp();
+
+    /*
+        @summary
+        Checks whether a path exists.
+    */
+    virtual Core::Result<bool> Exists(const std::filesystem::path& path);
+
+    /*
+        @summary
+        Checks whether a path refers to a directory.
+    */
+    virtual Core::Result<bool> IsDirectory(const std::filesystem::path& path);
+
+    /*
+        @summary
+        Creates a directory and any missing parent directories.
+
+        @returns
+        True if one or more directories were created.
+    */
+    virtual Core::Result<bool> CreateDirectories(const std::filesystem::path& path);
+
+    /*
+        @summary
+        Removes a file or an empty directory.
+
+        @returns
+        True if a file or directory was removed.
+    */
+    virtual Core::Result<bool> Remove(const std::filesystem::path& path);
+
+    /*
+        @summary
+        Returns the size of a file in bytes.
+    */
+    virtual Core::Result<std::uintmax_t> FileSize(const std::filesystem::path& file);
 
     /*
         @summary
@@ -95,9 +96,9 @@ public:
         @param mode
         File open mode to use.
     */
-    virtual Core::Result<std::string> read_file(
+    virtual Core::Result<std::string> ReadFile(
         const std::filesystem::path& file,
-        std::ios::openmode mode = std::ios::in | std::ios::binary) = 0;
+        std::ios::openmode mode = std::ios::in | std::ios::binary);
 
     /*
         @summary
@@ -112,10 +113,10 @@ public:
         @param mode
         File open mode to use.
     */
-    virtual Core::Result<void> write_file(
+    virtual Core::Result<void> WriteFile(
         const std::filesystem::path& file,
         std::string_view contents,
-        std::ios::openmode mode = std::ios::out | std::ios::binary | std::ios::trunc) = 0;
+        std::ios::openmode mode = std::ios::out | std::ios::binary | std::ios::trunc);
 
     /*
         @summary
@@ -130,12 +131,10 @@ public:
         @note
         Cross-filesystem moves are not emulated with copy and delete.
     */
-    virtual Core::Result<void> move_file(
+    virtual Core::Result<void> MoveFile(
         const std::filesystem::path& source,
         const std::filesystem::path& destination) = 0;
 
-protected:
-    virtual app_data_result app_data_impl(AppDataScope scope) = 0;
 };
 
 }

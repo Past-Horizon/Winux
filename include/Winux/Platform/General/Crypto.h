@@ -8,12 +8,12 @@
 
 namespace Winux::Platform {
 
-Core::Result<void> fill_random(std::span<std::byte> output);
-Core::Result<Contracts::ICrypto::Sha256Digest> sha256(std::span<const std::byte> input);
-Core::Result<Contracts::ICrypto::Sha256Digest> hmac_sha256(
+Core::Result<void> FillRandom(std::span<std::byte> output);
+Core::Result<Contracts::ICrypto::Sha256Digest> Sha256(std::span<const std::byte> input);
+Core::Result<Contracts::ICrypto::Sha256Digest> HmacSha256(
 	std::span<const std::byte> key,
 	std::span<const std::byte> input);
-Core::Result<void> hkdf_sha256(
+Core::Result<void> HkdfSha256(
 	std::span<const std::byte> input_key_material,
 	std::span<const std::byte> salt,
 	std::span<const std::byte> info,

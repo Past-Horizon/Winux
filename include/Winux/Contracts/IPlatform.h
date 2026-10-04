@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Winux/Core/Results.h>
+#include <Winux/Contracts/Capabilities.h>
 #include <Winux/Contracts/ICrypto.h>
 #include <Winux/Contracts/IEnvironment.h>
 #include <Winux/Contracts/IFileSystem.h>
@@ -27,13 +28,13 @@ public:
         @summary
         Returns the process abstraction provided by the current platform.
     */
-    virtual IProcess& process() = 0;
+    virtual IProcess& GetProcess() = 0;
 
     /*
         @summary
         Returns the environment abstraction provided by the current platform.
     */
-    virtual IEnvironment& environment() = 0;
+    virtual IEnvironment& GetEnvironment() = 0;
 
     /*
         @summary
@@ -42,31 +43,31 @@ public:
         @return
         The system service for the current platform.
     */
-    virtual ISystem& system() = 0;
+    virtual ISystem& GetSystem() = 0;
 
     /*
         @summary
         Returns the locale and local date/time interface provided by the current platform.
     */
-    virtual ILocale& locale() = 0;
+    virtual ILocale& GetLocale() = 0;
 
     /*
         @summary
         Returns the file-system abstraction provided by the current platform.
     */
-    virtual IFileSystem& file_system() = 0;
+    virtual IFileSystem& GetFileSystem() = 0;
 
     /*
         @summary
         Returns the terminal abstraction provided by the current platform.
     */
-    virtual ITerminal& terminal() = 0;
+    virtual ITerminal& GetTerminal() = 0;
 
     /*
         @summary
         Returns the operating-system-backed cryptographic random-byte service.
     */
-    virtual ICrypto& crypto() = 0;
+    virtual ICrypto& GetCrypto() = 0;
 
     /*
         @summary
@@ -75,14 +76,14 @@ public:
         @param name
         Unique mutex name.
     */
-    virtual Core::Result<std::unique_ptr<IMutex>> create_mutex(
+    virtual Core::Result<std::unique_ptr<IMutex>> CreateMutex(
         const std::wstring& name) = 0;
 
     /*
         @summary
         Reports which process features are supported on this platform.
     */
-    virtual IProcess::ProcessOptions supported_features() const = 0;
+    virtual CapabilitySet SupportedFeatures() const = 0;
 };
 
 } 

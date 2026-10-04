@@ -38,8 +38,8 @@ public:
 template <typename Value>
 Core::Result<Value> ProviderFailure(const char* operation, int error)
 {
-    return Core::Result<Value>::failure(
-        std::string("Mbed TLS ") + operation + " failed (error " + std::to_string(error) + ")");
+    return Core::Result<Value>::Failure(
+        std::string("Mbed TLS ") + operation + " Failed (error " + std::to_string(error) + ")");
 }
 
 const unsigned char* InputData(std::span<const std::byte> input)
@@ -57,11 +57,11 @@ const mbedtls_md_info_t* Sha256Info()
 
 }
 
-Core::Result<void> fill_random(std::span<std::byte> output)
+Core::Result<void> FillRandom(std::span<std::byte> output)
 {
     if (output.empty())
     {
-        return Core::Result<void>::success();
+        return Core::Result<void>::Success();
     }
 
     RandomContexts contexts;
@@ -95,15 +95,15 @@ Core::Result<void> fill_random(std::span<std::byte> output)
     }
 
     std::copy(generated.begin(), generated.end(), output.begin());
-    return Core::Result<void>::success();
+    return Core::Result<void>::Success();
 }
 
-Core::Result<Contracts::ICrypto::Sha256Digest> sha256(std::span<const std::byte> input)
+Core::Result<Contracts::ICrypto::Sha256Digest> Sha256(std::span<const std::byte> input)
 {
     const mbedtls_md_info_t* info = Sha256Info();
     if (info == nullptr)
     {
-        return Core::Result<Contracts::ICrypto::Sha256Digest>::failure(
+        return Core::Result<Contracts::ICrypto::Sha256Digest>::Failure(
             "Mbed TLS does not provide SHA-256.");
     }
 
@@ -118,17 +118,17 @@ Core::Result<Contracts::ICrypto::Sha256Digest> sha256(std::span<const std::byte>
         return ProviderFailure<Contracts::ICrypto::Sha256Digest>("SHA-256", result);
     }
 
-    return Core::Result<Contracts::ICrypto::Sha256Digest>::success(digest);
+    return Core::Result<Contracts::ICrypto::Sha256Digest>::Success(digest);
 }
 
-Core::Result<Contracts::ICrypto::Sha256Digest> hmac_sha256(
+Core::Result<Contracts::ICrypto::Sha256Digest> HmacSha256(
     std::span<const std::byte> key,
     std::span<const std::byte> input)
 {
     const mbedtls_md_info_t* info = Sha256Info();
     if (info == nullptr)
     {
-        return Core::Result<Contracts::ICrypto::Sha256Digest>::failure(
+        return Core::Result<Contracts::ICrypto::Sha256Digest>::Failure(
             "Mbed TLS does not provide SHA-256.");
     }
 
@@ -145,10 +145,10 @@ Core::Result<Contracts::ICrypto::Sha256Digest> hmac_sha256(
         return ProviderFailure<Contracts::ICrypto::Sha256Digest>("HMAC-SHA-256", result);
     }
 
-    return Core::Result<Contracts::ICrypto::Sha256Digest>::success(digest);
+    return Core::Result<Contracts::ICrypto::Sha256Digest>::Success(digest);
 }
 
-Core::Result<void> hkdf_sha256(
+Core::Result<void> HkdfSha256(
     std::span<const std::byte> input_key_material,
     std::span<const std::byte> salt,
     std::span<const std::byte> info,
@@ -157,17 +157,17 @@ Core::Result<void> hkdf_sha256(
     constexpr std::size_t maximum_output_size = 255 * 32;
     if (output.size() > maximum_output_size)
     {
-        return Core::Result<void>::failure("HKDF-SHA-256 output cannot exceed 8160 bytes.");
+        return Core::Result<void>::Failure("HKDF-SHA-256 output cannot exceed 8160 bytes.");
     }
     if (output.empty())
     {
-        return Core::Result<void>::success();
+        return Core::Result<void>::Success();
     }
 
     const mbedtls_md_info_t* md_info = Sha256Info();
     if (md_info == nullptr)
     {
-        return Core::Result<void>::failure("Mbed TLS does not provide SHA-256.");
+        return Core::Result<void>::Failure("Mbed TLS does not provide SHA-256.");
     }
 
     std::vector<std::byte> derived(output.size());
@@ -187,7 +187,37 @@ Core::Result<void> hkdf_sha256(
     }
 
     std::copy(derived.begin(), derived.end(), output.begin());
-    return Core::Result<void>::success();
+    return Core::Result<void>::Success();
+}
+
+}
+
+namespace Winux::Contracts {
+
+Core::Result<void> ICrypto::FillRandom(std::span<std::byte> output)
+{
+    return Platform::FillRandom(output);
+}
+
+Core::Result<ICrypto::Sha256Digest> ICrypto::Sha256(std::span<const std::byte> input)
+{
+    return Platform::Sha256(input);
+}
+
+Core::Result<ICrypto::Sha256Digest> ICrypto::HmacSha256(
+    std::span<const std::byte> key,
+    std::span<const std::byte> input)
+{
+    return Platform::HmacSha256(key, input);
+}
+
+Core::Result<void> ICrypto::HkdfSha256(
+    std::span<const std::byte> input_key_material,
+    std::span<const std::byte> salt,
+    std::span<const std::byte> info,
+    std::span<std::byte> output)
+{
+    return Platform::HkdfSha256(input_key_material, salt, info, output);
 }
 
 }

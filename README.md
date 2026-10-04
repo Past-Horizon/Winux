@@ -46,82 +46,82 @@ The goal is to keep adding useful application-level functionality without turnin
 #include <string>
 
 template <typename Value>
-bool Check(const char* operation, const Winux::Core::Result<Value>& result)
+bool Check(const char* operation, const Winux::Result<Value>& result)
 {
-	if (result.succeeded())
+	if (result.Succeeded())
 	{
 		return true;
 	}
 
-	std::cerr << operation << " failed: " << result.message() << '\n';
+	std::cerr << operation << " failed: " << result.Message() << '\n';
 	return false;
 }
 
 int main()
 {
-	auto platform = Winux::Platform::create(); // creates for current platform (for example Windows)
+	Winux::Platform::Initialize();
 
-	auto& fileSystem = platform->file_system();
-	auto& environment = platform->environment();
-	auto& process = platform->process();
-	auto& system = platform->system();
+	auto& fileSystem = Winux::Get<Winux::FileSystem>();
+	auto& environment = Winux::Get<Winux::Environment>();
+	auto& process = Winux::Get<Winux::Process>();
+	auto& system = Winux::Get<Winux::System>();
 
-	const auto temporaryDirectory = fileSystem.temp();
+	const auto temporaryDirectory = fileSystem.Temp();
 	if (!Check("Finding the temporary directory", temporaryDirectory))
 	{
 		return 1;
 	}
 
 	const std::filesystem::path source =
-		temporaryDirectory.value() / "winux-example-source.txt";
+		temporaryDirectory.Value() / "winux-example-source.txt";
 	const std::filesystem::path destination =
-		temporaryDirectory.value() / "winux-example-destination.txt";
+		temporaryDirectory.Value() / "winux-example-destination.txt";
 	std::error_code cleanupError;
 	std::filesystem::remove(source, cleanupError);
 	std::filesystem::remove(destination, cleanupError);
 
-	if (!Check("Writing a file", fileSystem.write_file(source, "Hello from Winux")))
+	if (!Check("Writing a file", fileSystem.WriteFile(source, "Hello from Winux")))
 	{
 		return 1;
 	}
 
-	const auto contents = fileSystem.read_file(source);
+	const auto contents = fileSystem.ReadFile(source);
 	if (!Check("Reading a file", contents))
 	{
 		return 1;
 	}
-	std::cout << contents.value() << '\n';
+	std::cout << contents.Value() << '\n';
 
-	if (!Check("Moving a file", fileSystem.move_file(source, destination)))
+	if (!Check("Moving a file", fileSystem.MoveFile(source, destination)))
 	{
 		return 1;
 	}
 
-	const auto username = system.get_username();
+	const auto username = system.GetUsername();
 	if (Check("Finding the current user", username))
 	{
-		std::wcout << L"User: " << username.value() << L'\n';
+		std::wcout << L"User: " << username.Value() << L'\n';
 	}
 
 	constexpr auto variableName = L"WINUX_EXAMPLE_VARIABLE";
 	if (!Check("Setting an environment variable",
-		environment.set_env(variableName, L"cross-platform")))
+		environment.SetEnv(variableName, L"cross-platform")))
 	{
 		return 1;
 	}
 
-	const auto variable = environment.get_env(variableName);
+	const auto variable = environment.GetEnv(variableName);
 	if (Check("Reading an environment variable", variable))
 	{
-		std::wcout << L"Variable: " << variable.value() << L'\n';
+		std::wcout << L"Variable: " << variable.Value() << L'\n';
 	}
-	environment.unset_env(variableName);
+	environment.UnsetEnv(variableName);
 
-	const auto executableDirectory = process.get_executable_directory();
+	const auto executableDirectory = process.GetExecutableDirectory();
 	if (Check("Finding the executable directory", executableDirectory))
 	{
 		std::cout << "Executable directory: "
-				  << executableDirectory.value().string() << '\n';
+				  << executableDirectory.Value().string() << '\n';
 	}
 
 	std::filesystem::remove(destination, cleanupError);

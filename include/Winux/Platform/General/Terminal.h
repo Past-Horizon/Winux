@@ -8,9 +8,9 @@
 
 namespace Winux::Platform {
 
-std::string read_pipe(std::FILE* pipe);
+std::string ReadPipe(std::FILE* pipe);
 
-std::shared_ptr<Contracts::ITerminal::ICommand> make_terminal_command(
+std::shared_ptr<Contracts::ITerminal::ICommand> MakeTerminalCommand(
     Contracts::ITerminal::ExecuteHandler execute_handler,
     Contracts::ITerminal::CanExecuteHandler can_execute_handler = {});
 

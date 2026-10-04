@@ -17,64 +17,64 @@ bool InvalidName(const std::wstring& name)
 
 }
 
-Contracts::IEnvironment& Linux::environment()
+Contracts::IEnvironment& Linux::GetEnvironment()
 {
     return *this;
 }
 
-Core::Result<std::wstring> Linux::get_env(const std::wstring& name)
+Core::Result<std::wstring> Linux::GetEnv(const std::wstring& name)
 {
     if (InvalidName(name))
     {
-        return Core::Result<std::wstring>::failure("Invalid environment variable name");
+        return Core::Result<std::wstring>::Failure("Invalid environment variable name");
     }
 
     const std::string narrow_name = String::ToString(name);
     const char* value = std::getenv(narrow_name.c_str());
     if (value == nullptr)
     {
-        return Core::Result<std::wstring>::failure(
+        return Core::Result<std::wstring>::Failure(
             "Environment variable is not set: " + narrow_name);
     }
 
-    return Core::Result<std::wstring>::success(String::Utf8ToWide(value));
+    return Core::Result<std::wstring>::Success(String::Utf8ToWide(value));
 }
 
-Core::Result<void> Linux::set_env(
+Core::Result<void> Linux::SetEnv(
     const std::wstring& name,
     const std::wstring& value)
 {
     if (InvalidName(name))
     {
-        return Core::Result<void>::failure("Invalid environment variable name");
+        return Core::Result<void>::Failure("Invalid environment variable name");
     }
 
     const std::string narrow_name = String::ToString(name);
     const std::string narrow_value = String::ToString(value);
     if (setenv(narrow_name.c_str(), narrow_value.c_str(), 1) != 0)
     {
-        return Core::Result<void>::failure(
+        return Core::Result<void>::Failure(
             "Unable to set environment variable (error " + std::to_string(errno) + ")");
     }
 
-    return Core::Result<void>::success();
+    return Core::Result<void>::Success();
 }
 
-Core::Result<void> Linux::unset_env(const std::wstring& name)
+Core::Result<void> Linux::UnsetEnv(const std::wstring& name)
 {
     if (InvalidName(name))
     {
-        return Core::Result<void>::failure("Invalid environment variable name");
+        return Core::Result<void>::Failure("Invalid environment variable name");
     }
 
     const std::string narrow_name = String::ToString(name);
     if (unsetenv(narrow_name.c_str()) != 0)
     {
-        return Core::Result<void>::failure(
+        return Core::Result<void>::Failure(
             "Unable to unset environment variable (error " + std::to_string(errno) + ")");
     }
 
-    return Core::Result<void>::success();
+    return Core::Result<void>::Success();
 }
 
 }
