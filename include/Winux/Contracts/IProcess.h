@@ -3,6 +3,7 @@
 #include <Winux/Contracts/Capabilities.h>
 #include <Winux/Core/Results.h>
 
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -16,6 +17,15 @@ namespace Winux::Contracts {
 */
 class IProcess {
 public:
+    enum class Architecture
+    {
+        X86,
+        X64,
+        Arm,
+        Arm64,
+        Unknown
+    };
+
     struct CreateNoWindow
     {
         static constexpr CapabilityId Id = 1;
@@ -37,10 +47,24 @@ public:
 
     /*
         @summary
+        Returns the identifier of the current process.
+    */
+    virtual Core::Result<std::uint32_t> GetCurrentProcessId() = 0;
+
+    /*
+        @summary
+        Returns the architecture of the specified process.
+    */
+    virtual Core::Result<Architecture> GetArchitecture(std::uint32_t process_id) = 0;
+
+    /*
+        @summary
         Finds all running processes matching a given executable name.
 
         @param name
         Process name to search for.
+
+        Matching is case-insensitive on Windows and case-sensitive on Linux.
     */
     virtual Core::Result<std::vector<std::uint32_t>> FindProcesses(const std::wstring& name) = 0;
 
@@ -87,6 +111,8 @@ public:
 
         @param application
         Path or command used to launch the process.
+
+        Executable paths containing spaces must be quoted in the command line.
     */
     virtual CreateProcessResult CreateProcess(
         const std::wstring& application,
@@ -98,8 +124,13 @@ public:
 
         @param process_id
         Identifier of the process to terminate.
+
+        @param timeout
+        Maximum time to wait for the process to exit.
     */
-    virtual Core::Result<void> TerminateProcess(std::uint32_t process_id) = 0;
+    virtual Core::Result<void> TerminateProcess(
+        std::uint32_t process_id,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds{ 5000 }) = 0;
 
     /*
         @summary
@@ -107,8 +138,13 @@ public:
 
         @param process_id
         Identifier of the process to terminate.
+
+        @param timeout
+        Maximum time to wait for the process to exit.
     */
-    virtual Core::Result<void> ForceTerminateProcess(std::uint32_t process_id) = 0;
+    virtual Core::Result<void> ForceTerminateProcess(
+        std::uint32_t process_id,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds{ 5000 }) = 0;
 
 };
 

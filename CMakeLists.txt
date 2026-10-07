@@ -20,7 +20,31 @@ else()
   message(FATAL_ERROR "Unsupported Winux platform: ${CMAKE_SYSTEM_NAME}")
 endif()
 
-set(WINUX_VCPKG_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
+set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed" CACHE PATH
+  "Directory where vcpkg installs dependencies")
+set(WINUX_VCPKG_PREFIX "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+if(NOT EXISTS "${WINUX_VCPKG_PREFIX}/share/mbedtls" OR
+   NOT EXISTS "${WINUX_VCPKG_PREFIX}/share/curl" OR
+   NOT EXISTS "${WINUX_VCPKG_PREFIX}/share/zlib")
+  find_program(WINUX_VCPKG_EXECUTABLE NAMES vcpkg HINTS "$ENV{VCPKG_ROOT}")
+  if(NOT WINUX_VCPKG_EXECUTABLE)
+    message(FATAL_ERROR
+      "vcpkg dependencies for '${VCPKG_TARGET_TRIPLET}' are missing and vcpkg was not found on PATH or under VCPKG_ROOT")
+  endif()
+
+  message(STATUS "Installing vcpkg dependencies for '${VCPKG_TARGET_TRIPLET}'")
+  execute_process(
+    COMMAND "${WINUX_VCPKG_EXECUTABLE}" install
+      --triplet "${VCPKG_TARGET_TRIPLET}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE WINUX_VCPKG_RESULT
+  )
+  if(NOT WINUX_VCPKG_RESULT EQUAL 0)
+    message(FATAL_ERROR
+      "vcpkg install failed for triplet '${VCPKG_TARGET_TRIPLET}' (exit code: ${WINUX_VCPKG_RESULT})")
+  endif()
+endif()
+
 list(PREPEND CMAKE_PREFIX_PATH "${WINUX_VCPKG_PREFIX}")
 find_package(MbedTLS CONFIG REQUIRED
   PATHS "${WINUX_VCPKG_PREFIX}/share/mbedtls"
@@ -121,6 +145,7 @@ if (WINUX_BUILD_TESTS)
     tests/LocaleTests.cpp
     tests/TerminalTests.cpp
     tests/StringUtilsTests.cpp
+    tests/MemoryTests.cpp
   )
 
   target_link_libraries(WinuxProcessTests

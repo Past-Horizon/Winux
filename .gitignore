@@ -6,3 +6,4 @@ private
 WinuxBuild
 vcpkg_installed
 .venv
+.github

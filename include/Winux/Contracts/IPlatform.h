@@ -8,6 +8,7 @@
 #include <Winux/Contracts/INetwork.h>
 #include <Winux/Contracts/ILocale.h>
 #include <Winux/Contracts/IMutex.h>
+#include <Winux/Contracts/IMemory.h>
 #include <Winux/Contracts/IProcess.h>
 #include <Winux/Contracts/ISystem.h>
 #include <Winux/Contracts/ITerminal.h>
@@ -30,6 +31,12 @@ public:
         Returns the process abstraction provided by the current platform.
     */
     virtual IProcess& GetProcess() = 0;
+
+    /*
+        @summary
+        Returns the process-memory service provided by the current platform.
+    */
+    virtual IMemory& GetMemory() = 0;
 
     /*
         @summary

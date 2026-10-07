@@ -31,8 +31,29 @@ public:
     RandomContexts(const RandomContexts&) = delete;
     RandomContexts& operator=(const RandomContexts&) = delete;
 
+    int Seed()
+    {
+        if (seeded_)
+        {
+            return 0;
+        }
+
+        static constexpr unsigned char personalization[] = "Winux ICrypto";
+        const int result = mbedtls_ctr_drbg_seed(
+            &generator_,
+            mbedtls_entropy_func,
+            &entropy_,
+            personalization,
+            sizeof(personalization) - 1);
+        seeded_ = result == 0;
+        return result;
+    }
+
     mbedtls_entropy_context entropy_{};
     mbedtls_ctr_drbg_context generator_{};
+
+private:
+    bool seeded_ = false;
 };
 
 template <typename Value>
@@ -64,28 +85,21 @@ Core::Result<void> FillRandom(std::span<std::byte> output)
         return Core::Result<void>::Success();
     }
 
-    RandomContexts contexts;
-    static constexpr unsigned char personalization[] = "Winux ICrypto";
-    const int seed_result = mbedtls_ctr_drbg_seed(
-        &contexts.generator_,
-        mbedtls_entropy_func,
-        &contexts.entropy_,
-        personalization,
-        sizeof(personalization) - 1);
+    static thread_local RandomContexts contexts;
+    const int seed_result = contexts.Seed();
     if (seed_result != 0)
     {
         return ProviderFailure<void>("entropy initialization", seed_result);
     }
 
-    std::vector<std::byte> generated(output.size());
-    for (std::size_t offset = 0; offset < generated.size();)
+    for (std::size_t offset = 0; offset < output.size();)
     {
         const std::size_t chunk_size = std::min<std::size_t>(
             MBEDTLS_CTR_DRBG_MAX_REQUEST,
-            generated.size() - offset);
+            output.size() - offset);
         const int random_result = mbedtls_ctr_drbg_random(
             &contexts.generator_,
-            reinterpret_cast<unsigned char*>(generated.data() + offset),
+            reinterpret_cast<unsigned char*>(output.data() + offset),
             chunk_size);
         if (random_result != 0)
         {
@@ -94,7 +108,6 @@ Core::Result<void> FillRandom(std::span<std::byte> output)
         offset += chunk_size;
     }
 
-    std::copy(generated.begin(), generated.end(), output.begin());
     return Core::Result<void>::Success();
 }
 
@@ -104,7 +117,7 @@ Core::Result<Contracts::ICrypto::Sha256Digest> Sha256(std::span<const std::byte>
     if (info == nullptr)
     {
         return Core::Result<Contracts::ICrypto::Sha256Digest>::Failure(
-            "Mbed TLS does not provide SHA-256.");
+            "Mbed TLS returned no SHA-256 metadata.");
     }
 
     Contracts::ICrypto::Sha256Digest digest{};
@@ -129,7 +142,7 @@ Core::Result<Contracts::ICrypto::Sha256Digest> HmacSha256(
     if (info == nullptr)
     {
         return Core::Result<Contracts::ICrypto::Sha256Digest>::Failure(
-            "Mbed TLS does not provide SHA-256.");
+            "Mbed TLS returned no SHA-256 metadata.");
     }
 
     Contracts::ICrypto::Sha256Digest digest{};
@@ -167,10 +180,9 @@ Core::Result<void> HkdfSha256(
     const mbedtls_md_info_t* md_info = Sha256Info();
     if (md_info == nullptr)
     {
-        return Core::Result<void>::Failure("Mbed TLS does not provide SHA-256.");
+        return Core::Result<void>::Failure("Mbed TLS returned no SHA-256 metadata.");
     }
 
-    std::vector<std::byte> derived(output.size());
     const int result = mbedtls_hkdf(
         md_info,
         InputData(salt),
@@ -179,14 +191,13 @@ Core::Result<void> HkdfSha256(
         input_key_material.size(),
         InputData(info),
         info.size(),
-        reinterpret_cast<unsigned char*>(derived.data()),
-        derived.size());
+        reinterpret_cast<unsigned char*>(output.data()),
+        output.size());
     if (result != 0)
     {
         return ProviderFailure<void>("HKDF-SHA-256", result);
     }
 
-    std::copy(derived.begin(), derived.end(), output.begin());
     return Core::Result<void>::Success();
 }
 

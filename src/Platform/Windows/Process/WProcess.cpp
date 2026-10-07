@@ -10,107 +10,13 @@
 
 namespace Winux::Platform::Windows {
 
-namespace {
-
-struct WindowCloseContext
-{
-    DWORD process_id;
-    bool found_window = false;
-};
-
-BOOL CALLBACK CloseProcessWindow(HWND window, LPARAM parameter)
-{
-    auto& context = *reinterpret_cast<WindowCloseContext*>(parameter);
-    DWORD window_process_id = 0;
-    GetWindowThreadProcessId(window, &window_process_id);
-    if (window_process_id == context.process_id && IsWindowVisible(window))
-    {
-        context.found_window = true;
-        PostMessageW(window, WM_CLOSE, 0, 0);
-    }
-
-    return TRUE;
-}
-
-struct ProcessTreeEntry
-{
-    DWORD process_id;
-    DWORD parent_process_id;
-};
-
-std::vector<ProcessTreeEntry> GetProcessTree()
-{
-    std::vector<ProcessTreeEntry> processes;
-    const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snapshot == INVALID_HANDLE_VALUE)
-    {
-        return processes;
-    }
-
-    PROCESSENTRY32W entry{};
-    entry.dwSize = sizeof(entry);
-    if (Process32FirstW(snapshot, &entry))
-    {
-        do
-        {
-            processes.push_back({ entry.th32ProcessID, entry.th32ParentProcessID });
-        } while (Process32NextW(snapshot, &entry));
-    }
-
-    CloseHandle(snapshot);
-    return processes;
-}
-
-bool IsDescendant(
-    const std::vector<ProcessTreeEntry>& processes,
-    const DWORD process_id,
-    const DWORD possible_descendant)
-{
-    DWORD parent_process_id = possible_descendant;
-    while (parent_process_id != 0 && parent_process_id != process_id)
-    {
-        const auto parent = std::find_if(
-            processes.begin(),
-            processes.end(),
-            [parent_process_id](const ProcessTreeEntry entry)
-            {
-                return entry.process_id == parent_process_id;
-            });
-        if (parent == processes.end())
-        {
-            return false;
-        }
-
-        parent_process_id = parent->parent_process_id;
-    }
-
-    return parent_process_id == process_id;
-}
-
-bool TerminateNativeProcess(const DWORD process_id)
-{
-    const HANDLE process = Process::OpenProcessHandle(
-        PROCESS_TERMINATE | SYNCHRONIZE,
-        process_id);
-    if (process == nullptr)
-    {
-        return false;
-    }
-
-    const bool terminated = ::TerminateProcess(process, 1) != FALSE;
-    if (terminated)
-    {
-        WaitForSingleObject(process, INFINITE);
-    }
-
-    CloseHandle(process);
-    return terminated;
-}
-
-}
-
 Contracts::IProcess& Win32::GetProcess() {
 	return *this;
+}
+
+Core::Result<std::uint32_t> Win32::GetCurrentProcessId()
+{
+    return Core::Result<std::uint32_t>::Success(::GetCurrentProcessId());
 }
 
 Contracts::CapabilitySet Win32::SupportedFeatures() const
@@ -129,28 +35,45 @@ Core::Result<std::vector<std::uint32_t>> Win32::FindProcesses(const std::wstring
     const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot == INVALID_HANDLE_VALUE)
     {
-        Logger::Log(Logger::Level::Error, "Process snapshot Failed (error ", GetLastError(), ")");
+        const DWORD error = GetLastError();
+        Logger::Log(Logger::Level::Error, "Process snapshot failed (error ", error, ")");
         return Core::Result<std::vector<std::uint32_t>>::Failure(
-            "Process snapshot Failed (error " + std::to_string(GetLastError()) + ")");
+            "Process snapshot failed (error " + std::to_string(error) + ")");
     }
 
     PROCESSENTRY32W entry{};
     entry.dwSize = sizeof(entry);
 
     Logger::Log(Logger::Level::Info, "Starting process enumeration");
-    if (Process32FirstW(snapshot, &entry))
+    if (!Process32FirstW(snapshot, &entry))
     {
-        Logger::Log(Logger::Level::Info, "Process enumeration started");
-        do
+        const DWORD error = GetLastError();
+        CloseHandle(snapshot);
+        if (error == ERROR_NO_MORE_FILES)
         {
-            if (_wcsicmp(entry.szExeFile, name.c_str()) == 0)
-            {
-                process_ids.push_back(entry.th32ProcessID);
-            }
-        } while (Process32NextW(snapshot, &entry));
+            return Core::Result<std::vector<std::uint32_t>>::Success({});
+        }
+        return Core::Result<std::vector<std::uint32_t>>::Failure(
+            "Unable to enumerate processes (error " + std::to_string(error) + ")");
     }
 
+    Logger::Log(Logger::Level::Info, "Process enumeration started");
+    do
+    {
+        if (_wcsicmp(entry.szExeFile, name.c_str()) == 0)
+        {
+            process_ids.push_back(entry.th32ProcessID);
+        }
+    } while (Process32NextW(snapshot, &entry));
+    const DWORD enumeration_error = GetLastError();
     CloseHandle(snapshot);
+    if (enumeration_error != ERROR_NO_MORE_FILES)
+    {
+        return Core::Result<std::vector<std::uint32_t>>::Failure(
+            "Unable to enumerate processes (error " + std::to_string(enumeration_error) + ")");
+    }
+
+    std::sort(process_ids.begin(), process_ids.end());
     if (process_ids.empty())
     {
         Logger::Log(Logger::Level::Info, "Was unable to find process");
@@ -183,8 +106,9 @@ Core::Result<std::filesystem::path> Win32::FindLocation(const std::uint32_t proc
         process_id);
     if (process == nullptr)
     {
+        const DWORD error = GetLastError();
         return Core::Result<std::filesystem::path>::Failure(
-            "Unable to open GetProcess (error " + std::to_string(GetLastError()) + ")");
+            "Unable to open process (error " + std::to_string(error) + ")");
     }
 
     std::wstring location(32768, L'\0');
@@ -194,12 +118,13 @@ Core::Result<std::filesystem::path> Win32::FindLocation(const std::uint32_t proc
         0,
         location.data(),
         &location_size);
+    const DWORD error = found ? ERROR_SUCCESS : GetLastError();
     CloseHandle(process);
 
     if (!found)
     {
         return Core::Result<std::filesystem::path>::Failure(
-            "Unable to find process location (error " + std::to_string(GetLastError()) + ")");
+            "Unable to find process location (error " + std::to_string(error) + ")");
     }
 
     location.resize(location_size);
@@ -219,8 +144,9 @@ Core::Result<std::filesystem::path> Win32::GetExecutableDirectory(
             process_id.value());
         if (process == nullptr)
         {
+            const DWORD error = GetLastError();
             return Core::Result<std::filesystem::path>::Failure(
-                "Unable to open GetProcess (error " + std::to_string(GetLastError()) + ")");
+                "Unable to open process (error " + std::to_string(error) + ")");
         }
     }
 
@@ -257,20 +183,30 @@ Core::Result<std::filesystem::path> Win32::GetExecutableDirectory(
 
 Core::Result<bool> Win32::IsRunning(const std::uint32_t process_id)
 {
+    if (process_id == 0)
+    {
+        return Core::Result<bool>::Failure("Unable to check process: invalid process ID");
+    }
+
     const HANDLE process = Process::OpenProcessHandle(SYNCHRONIZE, process_id);
     if (process == nullptr)
     {
         const DWORD error = GetLastError();
-        if (error == ERROR_INVALID_PARAMETER || error == ERROR_FILE_NOT_FOUND)
+        if (error == ERROR_INVALID_PARAMETER)
         {
             return Core::Result<bool>::Success(false);
         }
+        if (error == ERROR_ACCESS_DENIED)
+        {
+            return Core::Result<bool>::Success(true);
+        }
 
         return Core::Result<bool>::Failure(
-            "Unable to open GetProcess (error " + std::to_string(error) + ")");
+            "Unable to open process (error " + std::to_string(error) + ")");
     }
 
     const DWORD state = WaitForSingleObject(process, 0);
+    const DWORD error = state == WAIT_FAILED ? GetLastError() : ERROR_SUCCESS;
     CloseHandle(process);
 
     if (state == WAIT_TIMEOUT)
@@ -284,124 +220,7 @@ Core::Result<bool> Win32::IsRunning(const std::uint32_t process_id)
     }
 
     return Core::Result<bool>::Failure(
-        "Unable to check GetProcess (error " + std::to_string(GetLastError()) + ")");
-}
-
-Core::Result<std::uint32_t> Win32::CreateProcess(
-    const std::wstring& application,
-    const Contracts::CapabilitySet& requested_features)
-{
-    if (!SupportedFeatures().ContainsAll(requested_features))
-    {
-        return Core::Result<std::uint32_t>::Failure(
-            "Unable to create process: requested features are unsupported");
-    }
-
-    if (requested_features.Has<Contracts::IProcess::Detached>() &&
-        requested_features.Has<Contracts::IProcess::CreateNewConsole>())
-    {
-        return Core::Result<std::uint32_t>::Failure(
-            "Unable to create process: detached and new console options are incompatible");
-    }
-
-    STARTUPINFOW startup_info{};
-    startup_info.cb = sizeof(startup_info);
-
-    PROCESS_INFORMATION process_info{};
-    std::wstring command_line = application;
-    if (!CreateProcessW(
-            nullptr,
-            command_line.data(),
-            nullptr,
-            nullptr,
-            FALSE,
-              (requested_features.Has<Contracts::IProcess::CreateNoWindow>()
-                  ? CREATE_NO_WINDOW
-                  : 0) |
-                 (requested_features.Has<Contracts::IProcess::CreateNewConsole>()
-                     ? CREATE_NEW_CONSOLE
-                     : 0) |
-                 (requested_features.Has<Contracts::IProcess::Detached>()
-                     ? DETACHED_PROCESS
-                     : 0),
-            nullptr,
-            nullptr,
-            &startup_info,
-            &process_info))
-    {
-        Logger::Log(Logger::Level::Error, "Unable to create GetProcess (error ", GetLastError(), ")");
-        return Core::Result<std::uint32_t>::Failure(
-            "Unable to create GetProcess (error " + std::to_string(GetLastError()) + ")");
-    }
-
-    const std::uint32_t process_id = process_info.dwProcessId;
-    CloseHandle(process_info.hThread);
-    CloseHandle(process_info.hProcess);
-
-    Logger::Log(Logger::Level::Info, "Created process with ID ", process_id);
-    return Core::Result<std::uint32_t>::Success(process_id);
-}
-
-Core::Result<void> Win32::TerminateProcess(const std::uint32_t process_id)
-{
-    const HANDLE process = Process::OpenProcessHandle(
-        SYNCHRONIZE,
-        process_id);
-    if (process == nullptr)
-    {
-        Logger::Log(Logger::Level::Error, "Unable to open GetProcess (error ", GetLastError(), ")");
-        return Core::Result<void>::Failure(
-            "Unable to open GetProcess (error " + std::to_string(GetLastError()) + ")");
-    }
-
-    WindowCloseContext context{ process_id };
-    EnumWindows(CloseProcessWindow, reinterpret_cast<LPARAM>(&context));
-    if (!context.found_window)
-    {
-        CloseHandle(process);
-        return Core::Result<void>::Failure(
-            "Unable to request graceful process termination: process has no visible windows");
-    }
-
-    if (WaitForSingleObject(process, INFINITE) != WAIT_OBJECT_0)
-    {
-        Logger::Log(Logger::Level::Error, "Unable to wait for process termination (error ", GetLastError(), ")");
-        CloseHandle(process);
-        return Core::Result<void>::Failure(
-            "Unable to wait for process termination (error " + std::to_string(GetLastError()) + ")");
-    }
-
-    CloseHandle(process);
-    return Core::Result<void>::Success();
-}
-
-Core::Result<void> Win32::ForceTerminateProcess(const std::uint32_t process_id)
-{
-    if (process_id == 0)
-    {
-        return Core::Result<void>::Failure(
-            "Unable to force terminate process: invalid process ID");
-    }
-
-    const auto processes = GetProcessTree();
-    for (const auto& process : processes)
-    {
-        if (process.process_id != process_id &&
-            IsDescendant(processes, process_id, process.process_id))
-        {
-            TerminateNativeProcess(process.process_id);
-        }
-    }
-
-    if (!TerminateNativeProcess(process_id))
-    {
-        const DWORD error = GetLastError();
-        Logger::Log(Logger::Level::Error, "Unable to force terminate GetProcess (error ", error, ")");
-        return Core::Result<void>::Failure(
-            "Unable to force terminate GetProcess (error " + std::to_string(error) + ")");
-    }
-
-    return Core::Result<void>::Success();
+        "Unable to check process (error " + std::to_string(error) + ")");
 }
 
 }

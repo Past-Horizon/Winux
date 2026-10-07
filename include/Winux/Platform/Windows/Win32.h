@@ -6,7 +6,7 @@
 
 namespace Winux::Platform::Windows {
 
-class Win32 final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal, public Contracts::ICrypto, public Contracts::INetwork {
+class Win32 final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IMemory, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal, public Contracts::ICrypto, public Contracts::INetwork {
 public:
     ~Win32() override = default;
 
@@ -15,6 +15,23 @@ public:
         Returns the process interface provided by the Windows platform.
     */
     Contracts::IProcess& GetProcess() override;
+
+    Core::Result<std::uint32_t> GetCurrentProcessId() override;
+
+    Core::Result<Contracts::IProcess::Architecture> GetArchitecture(
+        std::uint32_t process_id) override;
+
+    Contracts::IMemory& GetMemory() override;
+
+    Core::Result<std::size_t> ReadMemory(
+        std::uint32_t process_id,
+        std::uintptr_t remote_address,
+        std::span<std::byte> output) override;
+
+    Core::Result<std::size_t> WriteMemory(
+        std::uint32_t process_id,
+        std::uintptr_t remote_address,
+        std::span<const std::byte> input) override;
 
     /*
         @summary
@@ -209,7 +226,9 @@ public:
         @param process_id
         Identifier of the process to stop.
     */
-    Core::Result<void> TerminateProcess(std::uint32_t process_id) override;
+    Core::Result<void> TerminateProcess(
+        std::uint32_t process_id,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds{ 5000 }) override;
 
     /*
         @summary
@@ -218,7 +237,9 @@ public:
         @param process_id
         Identifier of the process to stop.
     */
-    Core::Result<void> ForceTerminateProcess(std::uint32_t process_id) override;
+    Core::Result<void> ForceTerminateProcess(
+        std::uint32_t process_id,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds{ 5000 }) override;
 };
 
 }

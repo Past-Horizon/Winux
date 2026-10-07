@@ -85,6 +85,11 @@ template <> Locale& Get<Locale>()
     return ::GetInitializedPlatform().GetLocale();
 }
 
+template <> Memory& Get<Memory>()
+{
+    return ::GetInitializedPlatform().GetMemory();
+}
+
 template <> Network& Get<Network>()
 {
     return ::GetInitializedPlatform().GetNetwork();

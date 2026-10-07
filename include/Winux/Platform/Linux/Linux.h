@@ -4,7 +4,7 @@
 
 namespace Winux::Platform::Linux {
 
-class Linux final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal, public Contracts::ICrypto, public Contracts::INetwork {
+class Linux final : public Contracts::IPlatform, public Contracts::IProcess, public Contracts::IMemory, public Contracts::IFileSystem, public Contracts::IEnvironment, public Contracts::ISystem, public Contracts::ILocale, public Contracts::ITerminal, public Contracts::ICrypto, public Contracts::INetwork {
 public:
     ~Linux() override = default;
 
@@ -13,6 +13,63 @@ public:
         Returns the process interface provided by the Linux platform.
     */
     Contracts::IProcess& GetProcess() override;
+
+    /*
+        @summary
+        Returns the identifier of the current Linux process.
+    */
+    Core::Result<std::uint32_t> GetCurrentProcessId() override;
+
+    Core::Result<Contracts::IProcess::Architecture> GetArchitecture(
+        std::uint32_t process_id) override;
+
+    /*
+        @summary
+        Returns the process-memory service provided by Linux.
+    */
+    Contracts::IMemory& GetMemory() override;
+
+    /*
+        @summary
+        Reads memory from a Linux process into the supplied buffer.
+
+        @param process_id
+        Identifier of the process to read.
+
+        @param remote_address
+        Address in the target process.
+
+        @param output
+        Destination buffer; an empty buffer succeeds without validating the process.
+
+        @returns
+        The number of bytes transferred. Access may be restricted by Linux process permissions.
+    */
+    Core::Result<std::size_t> ReadMemory(
+        std::uint32_t process_id,
+        std::uintptr_t remote_address,
+        std::span<std::byte> output) override;
+
+    /*
+        @summary
+        Writes memory in a Linux process from the supplied buffer.
+
+        @param process_id
+        Identifier of the process to write.
+
+        @param remote_address
+        Address in the target process.
+
+        @param input
+        Source buffer; an empty buffer succeeds without validating the process.
+
+        @returns
+        The number of bytes transferred. Access may be restricted by Linux process permissions.
+    */
+    Core::Result<std::size_t> WriteMemory(
+        std::uint32_t process_id,
+        std::uintptr_t remote_address,
+        std::span<const std::byte> input) override;
 
     /*
         @summary
@@ -207,7 +264,9 @@ public:
         @param process_id
         Identifier of the process to stop.
     */
-    Core::Result<void> TerminateProcess(std::uint32_t process_id) override;
+    Core::Result<void> TerminateProcess(
+        std::uint32_t process_id,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds{ 5000 }) override;
 
     /*
         @summary
@@ -216,7 +275,9 @@ public:
         @param process_id
         Identifier of the process to stop.
     */
-    Core::Result<void> ForceTerminateProcess(std::uint32_t process_id) override;
+    Core::Result<void> ForceTerminateProcess(
+        std::uint32_t process_id,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds{ 5000 }) override;
 };
 
 }

@@ -1,12 +1,25 @@
 #include <Winux/Winux.h>
 #include "TestPlatform.h"
+#ifdef _WIN32
+#include <Winux/Platform/Windows/Process/WProcessArchitecture.h>
+#include <winnt.h>
+#else
+#include <Winux/Platform/Linux/Process/LProcessArchitecture.h>
+#include <Winux/Platform/Linux/Process/LProcessUtils.h>
+#include <elf.h>
+#endif
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
+#include <limits>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -62,6 +75,145 @@ TEST_F(ProcessTests, PlatformCreationProvidesProcessApi)
     ASSERT_NE(process, nullptr);
 }
 
+TEST_F(ProcessTests, GetArchitectureReturnsX64ForCurrentProcess)
+{
+    const auto process_id = process->GetCurrentProcessId();
+    ASSERT_TRUE(process_id.Succeeded()) << process_id.Message();
+
+    const auto architecture = process->GetArchitecture(process_id.Value());
+    ASSERT_TRUE(architecture.Succeeded()) << architecture.Message();
+    EXPECT_EQ(architecture.Value(), Winux::Process::Architecture::X64);
+}
+
+TEST_F(ProcessTests, GetArchitectureRejectsInvalidProcess)
+{
+    const auto architecture = process->GetArchitecture(0);
+    EXPECT_TRUE(architecture.Failed());
+}
+
+#ifdef _WIN32
+TEST_F(ProcessTests, ArchitectureMappingCoversWindowsMachineTypes)
+{
+    using Architecture = Winux::Process::Architecture;
+    using Winux::Platform::Windows::Process::Detail::ArchitectureFromMachine;
+
+    EXPECT_EQ(ArchitectureFromMachine(IMAGE_FILE_MACHINE_I386), Architecture::X86);
+    EXPECT_EQ(ArchitectureFromMachine(IMAGE_FILE_MACHINE_AMD64), Architecture::X64);
+    EXPECT_EQ(ArchitectureFromMachine(IMAGE_FILE_MACHINE_ARM), Architecture::Arm);
+    EXPECT_EQ(ArchitectureFromMachine(IMAGE_FILE_MACHINE_ARMNT), Architecture::Arm);
+    EXPECT_EQ(ArchitectureFromMachine(IMAGE_FILE_MACHINE_ARM64), Architecture::Arm64);
+    EXPECT_EQ(ArchitectureFromMachine(0xffff), Architecture::Unknown);
+}
+#else
+TEST_F(ProcessTests, ArchitectureMappingCoversLinuxMachineTypes)
+{
+    using Architecture = Winux::Process::Architecture;
+    using Winux::Platform::Linux::Process::Detail::ArchitectureFromElfMachine;
+
+    EXPECT_EQ(ArchitectureFromElfMachine(EM_386, ELFCLASS32, ELFDATA2LSB), Architecture::X86);
+    EXPECT_EQ(ArchitectureFromElfMachine(EM_X86_64, ELFCLASS64, ELFDATA2LSB), Architecture::X64);
+    EXPECT_EQ(ArchitectureFromElfMachine(EM_ARM, ELFCLASS32, ELFDATA2LSB), Architecture::Arm);
+    EXPECT_EQ(ArchitectureFromElfMachine(EM_AARCH64, ELFCLASS64, ELFDATA2LSB), Architecture::Arm64);
+    EXPECT_EQ(ArchitectureFromElfMachine(EM_NONE, ELFCLASSNONE, ELFDATA2LSB), Architecture::Unknown);
+    EXPECT_EQ(ArchitectureFromElfMachine(EM_X86_64, ELFCLASS32, ELFDATA2LSB), Architecture::Unknown);
+    EXPECT_EQ(ArchitectureFromElfMachine(EM_AARCH64, ELFCLASS64, ELFDATA2MSB), Architecture::Unknown);
+}
+#endif
+
+TEST_F(ProcessTests, GetArchitectureReturnsX64ForCreatedProcess)
+{
+    const std::uint32_t process_id = create_test_process();
+    ASSERT_NE(process_id, 0u);
+
+    const auto architecture = process->GetArchitecture(process_id);
+    ASSERT_TRUE(architecture.Succeeded()) << architecture.Message();
+    EXPECT_EQ(architecture.Value(), Winux::Process::Architecture::X64);
+}
+
+#ifndef _WIN32
+TEST_F(ProcessTests, RejectsProcessIdsThatDoNotFitPidType)
+{
+    constexpr std::uint32_t invalid_process_id =
+        (std::numeric_limits<std::uint32_t>::max)();
+
+    EXPECT_FALSE(Winux::Platform::Linux::Process::Detail::IsValidProcessId(
+        invalid_process_id));
+    EXPECT_TRUE(process->IsRunning(invalid_process_id).Failed());
+    EXPECT_TRUE(process->GetArchitecture(invalid_process_id).Failed());
+}
+#endif
+TEST_F(ProcessTests, TerminationRejectsNegativeTimeout)
+{
+    const std::uint32_t process_id = create_test_process();
+    ASSERT_NE(process_id, 0u);
+
+    EXPECT_TRUE(process->TerminateProcess(
+        process_id,
+        std::chrono::milliseconds{ -1 }).Failed());
+    EXPECT_TRUE(process->ForceTerminateProcess(
+        process_id,
+        std::chrono::milliseconds{ -1 }).Failed());
+}
+
+#ifndef _WIN32
+TEST_F(ProcessTests, CreateProcessParsesQuotedArguments)
+{
+    const auto result = process->CreateProcess(L"sh -c \"sleep 30\"");
+    ASSERT_TRUE(result.Succeeded()) << result.Message();
+    created_processes.push_back(result.Value());
+
+    const auto running = process->IsRunning(result.Value());
+    ASSERT_TRUE(running.Succeeded()) << running.Message();
+    EXPECT_TRUE(running.Value());
+}
+
+TEST_F(ProcessTests, TerminateProcessTimesOutForIgnoredSignal)
+{
+    const auto result = process->CreateProcess(L"sh -c \"trap '' TERM; exec sleep 30\"");
+    ASSERT_TRUE(result.Succeeded()) << result.Message();
+    created_processes.push_back(result.Value());
+
+    const auto terminated = process->TerminateProcess(
+        result.Value(),
+        std::chrono::milliseconds{ 50 });
+    EXPECT_TRUE(terminated.Failed());
+    EXPECT_NE(terminated.Message().find("Timed out"), std::string::npos);
+}
+
+TEST_F(ProcessTests, TerminateProcessWaitsForNonChildProcess)
+{
+    const auto current_process_id = process->GetCurrentProcessId();
+    ASSERT_TRUE(current_process_id.Succeeded()) << current_process_id.Message();
+    const auto pid_file = std::filesystem::temp_directory_path() /
+        ("winux-grandchild-" + std::to_string(current_process_id.Value()) + ".pid");
+    std::filesystem::remove(pid_file);
+
+    const std::string script = "sleep 30 & echo $! > '" + pid_file.string() + "'; wait";
+    const auto result = process->CreateProcess(
+        std::wstring(L"sh -c \"") + std::wstring(script.begin(), script.end()) + L"\"");
+    ASSERT_TRUE(result.Succeeded()) << result.Message();
+    created_processes.push_back(result.Value());
+
+    std::uint32_t descendant_process_id = 0;
+    for (int attempt = 0; attempt < 100 && descendant_process_id == 0; ++attempt)
+    {
+        std::ifstream pid_stream(pid_file);
+        pid_stream >> descendant_process_id;
+        if (descendant_process_id == 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds{ 1 });
+        }
+    }
+    ASSERT_NE(descendant_process_id, 0u);
+
+    const auto terminated = process->TerminateProcess(
+        descendant_process_id,
+        std::chrono::milliseconds{ 500 });
+    EXPECT_TRUE(terminated.Succeeded()) << terminated.Message();
+    std::filesystem::remove(pid_file);
+}
+#endif
+
 TEST_F(ProcessTests, ProcessCapabilitiesMatchPlatformSupport)
 {
     const auto supported = platform->SupportedFeatures();
@@ -83,6 +235,29 @@ TEST_F(ProcessTests, CreateProcessReturnsRunningProcess)
     const auto running = process->IsRunning(process_id);
     ASSERT_TRUE(running.Succeeded()) << running.Message();
     EXPECT_TRUE(running.Value());
+}
+
+TEST_F(ProcessTests, ExitedChildIsNotReportedAsRunning)
+{
+#ifdef _WIN32
+    const auto result = process->CreateProcess(L"cmd.exe /c exit 0");
+#else
+    const auto result = process->CreateProcess(L"true");
+#endif
+    ASSERT_TRUE(result.Succeeded()) << result.Message();
+    created_processes.push_back(result.Value());
+
+    Winux::Result<bool> running = Winux::Result<bool>::Success(true);
+    for (int attempt = 0; attempt < 100 && running.Value(); ++attempt)
+    {
+        running = process->IsRunning(result.Value());
+        ASSERT_TRUE(running.Succeeded()) << running.Message();
+        if (running.Value())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds{ 10 });
+        }
+    }
+    EXPECT_FALSE(running.Value());
 }
 
 TEST_F(ProcessTests, DetachedCapabilityStartsProcess)
@@ -172,6 +347,7 @@ TEST_F(ProcessTests, FindProcessesReturnsCreatedProcess)
 #endif
     ASSERT_TRUE(result.Succeeded()) << result.Message();
     EXPECT_FALSE(result.Value().empty());
+    EXPECT_TRUE(std::is_sorted(result.Value().begin(), result.Value().end()));
 }
 
 TEST_F(ProcessTests, IsRunningChangesAfterTermination)
@@ -242,6 +418,18 @@ TEST_F(ProcessTests, DetachedAndNewConsoleCapabilitiesAreIncompatible)
     const auto result = process->CreateProcess(
         L"cmd.exe /c \"ping 127.0.0.1 -n 30 > nul\"", options);
     EXPECT_TRUE(result.Failed());
+
+    Winux::CapabilitySet no_window_and_console;
+    no_window_and_console.Add<Winux::Process::CreateNoWindow>();
+    no_window_and_console.Add<Winux::Process::CreateNewConsole>();
+    EXPECT_TRUE(process->CreateProcess(
+        L"cmd.exe /c exit 0", no_window_and_console).Failed());
+
+    Winux::CapabilitySet no_window_and_detached;
+    no_window_and_detached.Add<Winux::Process::CreateNoWindow>();
+    no_window_and_detached.Add<Winux::Process::Detached>();
+    EXPECT_TRUE(process->CreateProcess(
+        L"cmd.exe /c exit 0", no_window_and_detached).Failed());
 }
 #else
 TEST_F(ProcessTests, UnsupportedWindowsCapabilitiesFailBeforeStarting)
