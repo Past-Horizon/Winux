@@ -5,6 +5,7 @@
 
 #include <windows.h>
 #include <TlHelp32.h>
+#include <psapi.h>
 
 #include <algorithm>
 
@@ -129,6 +130,78 @@ Core::Result<std::filesystem::path> Win32::FindLocation(const std::uint32_t proc
 
     location.resize(location_size);
     return Core::Result<std::filesystem::path>::Success(std::filesystem::path(location));
+}
+
+Core::Result<std::uintptr_t> Win32::FindModule(
+    const std::filesystem::path& name,
+    const std::optional<std::uint32_t> process_id)
+{
+    const auto current_process_id = GetCurrentProcessId();
+    const std::uint32_t target_process_id =
+        process_id.value_or(current_process_id.Value());
+    if (current_process_id.Failed() && !process_id.has_value())
+    {
+        return Core::Result<std::uintptr_t>::Failure(
+            "Unable to resolve the current process ID");
+    }
+
+    const HANDLE process = Process::OpenProcessHandle(
+        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+        target_process_id);
+    if (process == nullptr)
+    {
+        const DWORD error = GetLastError();
+        return Core::Result<std::uintptr_t>::Failure(
+            "Unable to open process (error " + std::to_string(error) + ")");
+    }
+
+    std::array<HMODULE, 256> modules{};
+    DWORD needed = 0;
+    const BOOL enumerated = EnumProcessModules(
+        process,
+        modules.data(),
+        static_cast<DWORD>(modules.size() * sizeof(HMODULE)),
+        &needed);
+    if (!enumerated)
+    {
+        const DWORD error = GetLastError();
+        CloseHandle(process);
+        return Core::Result<std::uintptr_t>::Failure(
+            "Unable to enumerate process modules (error " + std::to_string(error) + ")");
+    }
+
+    const std::size_t module_count = needed / sizeof(HMODULE);
+    const auto requested_name = name.filename();
+    for (std::size_t index = 0; index < module_count; ++index)
+    {
+        const HMODULE module = modules[index];
+        if (module == nullptr)
+        {
+            continue;
+        }
+
+        std::wstring module_path(4096, L'\0');
+        const DWORD length = GetModuleFileNameExW(
+            process,
+            module,
+            module_path.data(),
+            static_cast<DWORD>(module_path.size()));
+        if (length == 0)
+        {
+            continue;
+        }
+
+        module_path.resize(length);
+        if (std::filesystem::path(module_path).filename() == requested_name)
+        {
+            const auto base_address = reinterpret_cast<std::uintptr_t>(module);
+            CloseHandle(process);
+            return Core::Result<std::uintptr_t>::Success(base_address);
+        }
+    }
+
+    CloseHandle(process);
+    return Core::Result<std::uintptr_t>::Success(0);
 }
 
 Core::Result<std::filesystem::path> Win32::GetExecutableDirectory(

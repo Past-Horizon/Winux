@@ -147,6 +147,65 @@ Core::Result<std::filesystem::path> Linux::FindLocation(const std::uint32_t proc
     return Core::Result<std::filesystem::path>::Success(location);
 }
 
+Core::Result<std::uintptr_t> Linux::FindModule(
+    const std::filesystem::path& name,
+    const std::optional<std::uint32_t> process_id)
+{
+    const auto current_process_id = GetCurrentProcessId();
+    const std::uint32_t target_process_id =
+        process_id.value_or(current_process_id.Value());
+    if (current_process_id.Failed() && !process_id.has_value())
+    {
+        return Core::Result<std::uintptr_t>::Failure(
+            "Unable to resolve the current process ID");
+    }
+
+    const std::filesystem::path maps_path =
+        std::filesystem::path("/proc") /
+        std::to_string(target_process_id) /
+        "maps";
+    std::ifstream maps(maps_path);
+    if (!maps)
+    {
+        return Core::Result<std::uintptr_t>::Failure(
+            "Unable to open process mappings at " + maps_path.string());
+    }
+
+    const std::filesystem::path requested_name = name.filename();
+    std::string line;
+    while (std::getline(maps, line))
+    {
+        const std::size_t address_separator = line.find(' ');
+        if (address_separator == std::string::npos)
+        {
+            continue;
+        }
+
+        const std::size_t path_start = line.find_last_of(' ');
+        if (path_start == std::string::npos || path_start == line.size() - 1)
+        {
+            continue;
+        }
+
+        const std::string mapped_path = line.substr(path_start + 1);
+        if (std::filesystem::path(mapped_path).filename() == requested_name)
+        {
+            const std::string address = line.substr(0, line.find('-'));
+            std::size_t parsed = 0;
+            const std::uintptr_t base_address =
+                std::stoull(address, &parsed, 16);
+            if (parsed != address.size())
+            {
+                continue;
+            }
+
+            return Core::Result<std::uintptr_t>::Success(base_address);
+        }
+    }
+
+    return Core::Result<std::uintptr_t>::Success(0);
+}
+
 Core::Result<std::filesystem::path> Linux::GetExecutableDirectory(
     const std::optional<std::uint32_t> process_id)
 {

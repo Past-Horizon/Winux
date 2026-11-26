@@ -88,6 +88,23 @@ public:
 
     /*
         @summary
+        Resolves the base address of a loaded module for the current or specified process.
+
+        @param name
+        Module file name to match.
+
+        @param process_id
+        Optional identifier of the process to inspect. When omitted, uses the current process.
+
+        @returns
+        The module base address, or 0 when the module is not loaded in the target process.
+    */
+    virtual Core::Result<std::uintptr_t> FindModule(
+        const std::filesystem::path& name,
+        std::optional<std::uint32_t> process_id = std::nullopt) = 0;
+
+    /*
+        @summary
         Resolves the directory containing the current or specified process executable.
 
         @param process_id

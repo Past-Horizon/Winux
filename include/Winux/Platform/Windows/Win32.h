@@ -193,6 +193,10 @@ public:
     */
     Core::Result<std::filesystem::path> FindLocation(std::uint32_t process_id) override;
 
+    Core::Result<std::uintptr_t> FindModule(
+        const std::filesystem::path& name,
+        std::optional<std::uint32_t> process_id = std::nullopt) override;
+
     Core::Result<std::filesystem::path> GetExecutableDirectory(
         std::optional<std::uint32_t> process_id = std::nullopt) override;
 

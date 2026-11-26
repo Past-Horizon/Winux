@@ -297,6 +297,37 @@ TEST_F(ProcessTests, FindLocationRejectsInvalidProcess)
     EXPECT_TRUE(location.Failed());
 }
 
+TEST_F(ProcessTests, FindModuleReturnsCurrentProcessBaseAddress)
+{
+    const auto current_process_id = process->GetCurrentProcessId();
+    ASSERT_TRUE(current_process_id.Succeeded()) << current_process_id.Message();
+
+    const auto location = process->FindLocation(current_process_id.Value());
+    ASSERT_TRUE(location.Succeeded()) << location.Message();
+
+    const auto module = process->FindModule(
+        location.Value().filename(),
+        current_process_id.Value());
+    ASSERT_TRUE(module.Succeeded()) << module.Message();
+    EXPECT_NE(module.Value(), 0u);
+}
+
+TEST_F(ProcessTests, FindModuleRejectsInvalidProcess)
+{
+    const auto module = process->FindModule(L"winux-process-test.exe", 0);
+    EXPECT_TRUE(module.Failed());
+}
+
+TEST_F(ProcessTests, FindModuleRejectsMissingModule)
+{
+    const auto current_process_id = process->GetCurrentProcessId();
+    ASSERT_TRUE(current_process_id.Succeeded()) << current_process_id.Message();
+
+    const auto module = process->FindModule(L"winux-module-that-does-not-exist.exe", current_process_id.Value());
+    ASSERT_TRUE(module.Succeeded()) << module.Message();
+    EXPECT_EQ(module.Value(), 0u);
+}
+
 TEST_F(ProcessTests, GetExecutableDirectoryReturnsCurrentDirectory)
 {
     const auto directory = process->GetExecutableDirectory();
