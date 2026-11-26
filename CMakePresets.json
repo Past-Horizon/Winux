@@ -102,6 +102,42 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        },
+        {
+            "name": "mingw-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "toolchainFile": "${sourceDir}/cmake/toolchains/mingw-w64-x86_64.cmake",
+            "cacheVariables": {
+                "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed/mingw",
+                "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
+                "WINUX_BUILD_TESTS": "OFF"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
+            "name": "mingw-x64-debug",
+            "displayName": "MinGW x64 Debug",
+            "inherits": "mingw-base",
+            "binaryDir": "${sourceDir}/WinuxBuild/Windows/Debug",
+            "installDir": "${sourceDir}/WinuxBuild/Windows/Debug/install",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "mingw-x64-release",
+            "displayName": "MinGW x64 Release",
+            "inherits": "mingw-x64-debug",
+            "binaryDir": "${sourceDir}/WinuxBuild/Windows/Release",
+            "installDir": "${sourceDir}/WinuxBuild/Windows/Release/install",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
         }
     ]
 }

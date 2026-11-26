@@ -173,6 +173,19 @@ TEST_F(ProcessTests, TerminateProcessTimesOutForIgnoredSignal)
     ASSERT_TRUE(result.Succeeded()) << result.Message();
     created_processes.push_back(result.Value());
 
+    bool signal_ignored = false;
+    for (int attempt = 0; attempt < 100; ++attempt)
+    {
+        const auto location = process->FindLocation(result.Value());
+        if (location.Succeeded() && location.Value().filename() == "sleep")
+        {
+            signal_ignored = true;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds{ 1 });
+    }
+    ASSERT_TRUE(signal_ignored);
+
     const auto terminated = process->TerminateProcess(
         result.Value(),
         std::chrono::milliseconds{ 50 });

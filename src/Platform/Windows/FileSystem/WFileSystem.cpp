@@ -1,8 +1,13 @@
 #include <Winux/Platform/Windows/Win32.h>
 
 #include <windows.h>
+#ifdef __MINGW32__
+#include <knownfolders.h>
+#include <shlobj.h>
+#else
 #include <KnownFolders.h>
 #include <ShlObj.h>
+#endif
 
 #include <filesystem>
 #include <string>

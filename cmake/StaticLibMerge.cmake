@@ -125,10 +125,10 @@ function(winux_merge_static_libraries target_name)
     list(APPEND _merge_arguments "-DWINUX_MERGE_LIBRARY_${_index}=$<TARGET_FILE:${_library}>")
   endforeach()
 
-  if(WIN32)
-    set(_merge_platform "WINDOWS")
+  if(MSVC)
+    set(_merge_platform "MSVC")
   else()
-    set(_merge_platform "UNIX")
+    set(_merge_platform "GNU")
   endif()
 
   add_custom_command(TARGET "${target_name}" POST_BUILD
@@ -162,7 +162,7 @@ if(DEFINED WINUX_MERGE_ARCHIVE)
   set(_temporary_archive "${WINUX_MERGE_ARCHIVE}.merged")
   file(REMOVE "${_temporary_archive}")
 
-  if(WINUX_MERGE_PLATFORM STREQUAL "WINDOWS")
+  if(WINUX_MERGE_PLATFORM STREQUAL "MSVC")
     execute_process(
       COMMAND "${WINUX_MERGE_TOOL}" /NOLOGO "/OUT:${_temporary_archive}"
         "${WINUX_MERGE_ARCHIVE}" ${_merge_libraries}

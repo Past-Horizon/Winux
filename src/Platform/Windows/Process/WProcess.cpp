@@ -4,7 +4,11 @@
 #include <Winux/Platform/Windows/Process/WProcessUtils.h>
 
 #include <windows.h>
+#ifdef __MINGW32__
+#include <tlhelp32.h>
+#else
 #include <TlHelp32.h>
+#endif
 #include <psapi.h>
 
 #include <algorithm>

@@ -36,6 +36,7 @@ if(NOT EXISTS "${WINUX_VCPKG_PREFIX}/share/mbedtls" OR
   execute_process(
     COMMAND "${WINUX_VCPKG_EXECUTABLE}" install
       --triplet "${VCPKG_TARGET_TRIPLET}"
+      --x-install-root "${VCPKG_INSTALLED_DIR}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     RESULT_VARIABLE WINUX_VCPKG_RESULT
   )
@@ -46,6 +47,9 @@ if(NOT EXISTS "${WINUX_VCPKG_PREFIX}/share/mbedtls" OR
 endif()
 
 list(PREPEND CMAKE_PREFIX_PATH "${WINUX_VCPKG_PREFIX}")
+set(MbedTLS_DIR "${WINUX_VCPKG_PREFIX}/share/mbedtls" CACHE PATH "MbedTLS package directory" FORCE)
+set(ZLIB_DIR "${WINUX_VCPKG_PREFIX}/share/zlib" CACHE PATH "Zlib package directory" FORCE)
+set(CURL_DIR "${WINUX_VCPKG_PREFIX}/share/curl" CACHE PATH "CURL package directory" FORCE)
 find_package(MbedTLS CONFIG REQUIRED
   PATHS "${WINUX_VCPKG_PREFIX}/share/mbedtls"
   NO_DEFAULT_PATH
@@ -54,8 +58,13 @@ if(WIN32)
   set(ZLIB_ROOT "${WINUX_VCPKG_PREFIX}")
   set(ZLIB_USE_STATIC_LIBS ON)
   set(ZLIB_INCLUDE_DIR "${WINUX_VCPKG_PREFIX}/include" CACHE PATH "Zlib include directory" FORCE)
-  set(ZLIB_LIBRARY_RELEASE "${WINUX_VCPKG_PREFIX}/lib/zs.lib" CACHE FILEPATH "Zlib release library" FORCE)
-  set(ZLIB_LIBRARY_DEBUG "${WINUX_VCPKG_PREFIX}/debug/lib/zsd.lib" CACHE FILEPATH "Zlib debug library" FORCE)
+  if(MSVC)
+    set(ZLIB_LIBRARY_RELEASE "${WINUX_VCPKG_PREFIX}/lib/zs.lib" CACHE FILEPATH "Zlib release library" FORCE)
+    set(ZLIB_LIBRARY_DEBUG "${WINUX_VCPKG_PREFIX}/debug/lib/zsd.lib" CACHE FILEPATH "Zlib debug library" FORCE)
+  else()
+    set(ZLIB_LIBRARY_RELEASE "${WINUX_VCPKG_PREFIX}/lib/libzs.a" CACHE FILEPATH "Zlib release library" FORCE)
+    set(ZLIB_LIBRARY_DEBUG "${WINUX_VCPKG_PREFIX}/debug/lib/libzsd.a" CACHE FILEPATH "Zlib debug library" FORCE)
+  endif()
 endif()
 find_package(ZLIB REQUIRED)
 find_package(ZLIB CONFIG REQUIRED
@@ -109,6 +118,12 @@ set_target_properties(Winux PROPERTIES
   OUTPUT_NAME "Winux.${WINUX_PLATFORM}.$<CONFIG>.${WINUX_VERSION}"
   ARCHIVE_OUTPUT_DIRECTORY "${WINUX_OUTPUT_ROOT}/$<CONFIG>"
 )
+if(MINGW)
+  set_target_properties(Winux PROPERTIES
+    PREFIX ""
+    SUFFIX ".lib"
+  )
+endif()
 target_include_directories(Winux PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
   "$<BUILD_INTERFACE:${WINUX_CUDEV_SOURCE_DIR}/include>"
@@ -120,8 +135,10 @@ target_compile_features(Winux PUBLIC cxx_std_20)
 include(cmake/StaticLibMerge.cmake)
 winux_merge_static_libraries(Winux MbedTLS::mbedtls CURL::libcurl ZLIB::ZLIBSTATIC Cudev)
 
-if (WIN32)
+if (WIN32 AND MSVC)
   target_link_libraries(Winux PRIVATE Shell32)
+elseif(WIN32)
+  target_link_libraries(Winux PRIVATE shell32)
 endif()
 
 if (WINUX_BUILD_TESTS)

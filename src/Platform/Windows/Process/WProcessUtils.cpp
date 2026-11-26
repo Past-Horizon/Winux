@@ -1,6 +1,10 @@
 #include <Winux/Platform/Windows/Process/WProcessUtils.h>
 
+#ifdef __MINGW32__
+#include <tlhelp32.h>
+#else
 #include <TlHelp32.h>
+#endif
 
 #include <algorithm>
 #include <optional>

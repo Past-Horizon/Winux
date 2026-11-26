@@ -1,17 +1,26 @@
-Install manifest dependencies:
+Build Linux Debug and Release:
 
-CMake uses the sibling `../Cudev` checkout by default
-(`WINUX_USE_LOCAL_CUDEV=ON`). To fetch Cudev from GitHub instead, set
-`-DWINUX_USE_LOCAL_CUDEV=OFF` when configuring.
+```sh
+cmake --preset linux-debug
+cmake --build WinuxBuild/Linux/Debug --parallel
 
-Windows (`x64-windows-static-md`):
+cmake --preset linux-release
+cmake --build WinuxBuild/Linux/Release --parallel
+```
+
+Cross-compile Windows x64 with MinGW-w64 (requires the `x86_64-w64-mingw32`
+compiler tools and vcpkg):
+
+```sh
+cmake --preset mingw-x64-debug
+cmake --build WinuxBuild/Windows/Debug --parallel
+
+cmake --preset mingw-x64-release
+cmake --build WinuxBuild/Windows/Release --parallel
+```
+
+Windows builds with MSVC use `x64-windows-static-md`:
 
 ```powershell
 vcpkg install --triplet x64-windows-static-md
-```
-
-Linux (`x64-linux`):
-
-```sh
-sudo vcpkg install --triplet x64-linux
 ```
